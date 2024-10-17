@@ -29,12 +29,12 @@ def compute_baseline_schedule(params):
     schedule = []
 
     # 初始化 OCS 的上一次配置和可用时间
-    last_config = [None] * k  # 列表，长度为 k，存储每个 OCS 的最后配置编号
-    available_time = [0.0] * k  # 列表，长度为 k，存储每个 OCS 的可用时间
+    last_config = [None] * (k+1)  # 列表，长度为 k，存储每个 OCS 的最后配置编号
+    available_time = [0.0] * (k+1)  # 列表，长度为 k，存储每个 OCS 的可用时间
 
     # 遍历每个步骤，计算时间
     for i in range(1, num_steps + 1):
-        for j in range(k):
+        for j in range(1, k+1):
             current_config = configurations[i]
             # 检查是否需要重配置
             if last_config[j] != current_config:
@@ -67,7 +67,7 @@ def compute_baseline_schedule(params):
             # 将当前活动添加到 schedule 列表
             schedule.append({
                 'step': i,
-                'ocs': j + 1,
+                'ocs': j,
                 'd': m_i[i] / k,
                 't_start': t_trans_start,
                 't_end': t_trans_end,
