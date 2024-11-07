@@ -12,7 +12,7 @@ def get_parameters():
     params['T_reconf'] = 2  # 重配置时间，2秒
 
     # 2. CC
-    params['p'] = 10  # 计算节点数量
+    params['p'] = 16  # 计算节点数量
     params['m'] = 400 * 1024 * 1024  # 总消息大小，400MB，转换为字节
 
     # 3. 算法选择
@@ -35,8 +35,8 @@ def get_parameters():
 
 
 def compute_having_doubling_params(p, m):
-    p_new = 2 ** ((p - 1).bit_length() - 1)
-    s = (p_new - 1).bit_length() # NOTE: (p - 1).bit_length() 即 ceil(log2(p))
+    p_new = 2 ** ((p).bit_length() - 1)  # NOTE: 小于等于 p 的最大 2 的幂次方数
+    s = (p_new - 1).bit_length()         # NOTE: (p - 1).bit_length() 即 ceil(log2(p))
     
     num_steps = 2 * s
     return {

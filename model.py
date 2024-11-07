@@ -130,7 +130,6 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
             model.addConstr(t_reconf_start[i, j] >= t_prev_end[i, j],
                             name=f"reconf_after_prev_end_step_{i}_ocs_{j}")
 
-
     # (8) 步骤完成时间定义
     for i in range(1, num_steps + 1):
         for j in range(1, k + 1):
@@ -144,10 +143,10 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
                             name=f"trans_after_prev_step_end_step_{i}_ocs_{j}")
 
     # (10) 通信完成时间定义
+    # model.addConstr(CCT >= t_step_end[num_steps]) # TODO: FIXME:
     for i in range(1, num_steps + 1):
         model.addConstr(CCT >= t_step_end[i],
                         name=f"CCT_def_step_{i}")
-
 
 # 在optimize_model函数之后调用此验证函数
 def optimize_model(model):

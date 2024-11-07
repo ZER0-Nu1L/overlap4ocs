@@ -2,20 +2,21 @@
 from gurobipy import GRB
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import logging as log
 
 
 def extract_results(model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, params):
     if model.status == GRB.OPTIMAL:
-        print(f"Optimal CCT: {cct.X * 1000:.2f} ms")
+        log.info(f"Optimal CCT: {cct.X * 1000:.2f} ms")
         schedule = []
         k = params['k']
         num_steps = params['num_steps']
 
         for i in range(1, num_steps + 1):
-            for j in range(k):
+            for j in range(1, k+1):
                 schedule.append({
                     'step': i,
-                    'ocs': j + 1,
+                    'ocs': j,
                     'd': d[i, j].X,
                     't_start': t_start[i, j].X,
                     't_end': t_end[i, j].X,
@@ -27,17 +28,36 @@ def extract_results(model, cct, d, t_start, t_end, u, r, t_reconf_start, t_recon
 
         # 按开始时间排序
         schedule.sort(key=lambda s: s['t_start'])
-
         # 输出调度结果
+        log.info("-----------------------------------")
+        log.info("schedule sorted by start time")
+        log.info("-----------------------------------")
         for s in schedule:
-            print(f"Step {s['step']}, OCS {s['ocs']}, Used: {s['used']}, Data: {s['d']}, "
+            log.info(f"Step {s['step']}, OCS {s['ocs']}, Used: {s['used']}, Data: {s['d']}, "
                   f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
                   f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
+        # log.info("-----------------------------------")
+        # log.info("schedule sorted by OCS")
+        # log.info("-----------------------------------")
+        # for s in sorted(schedule, key=lambda x: x['ocs']):
+        #     log.info(f"OCS {s['ocs']}, Step {s['step']}, Used: {s['used']}, Data: {s['d']}, "
+        #           f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
+        #           f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
         return schedule
     else:
-        print("No optimal solution found.")
+        log.info("No optimal solution found.")
         return None
 
+
+def apply_offset(schedule_item, offset):
+    """对单个调度项应用时间偏移"""
+    return {
+        **schedule_item,
+        't_start': schedule_item['t_start'] - offset,
+        't_end': schedule_item['t_end'] - offset,
+        't_reconf_start': schedule_item['t_reconf_start'] - offset,
+        't_reconf_end': schedule_item['t_reconf_end'] - offset
+    }
 
 def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='schedule.pdf'):
     # 函数实现# 定义颜色和样式
@@ -54,23 +74,27 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
 
     # 设置字体和字号
     plt.rcParams.update({'font.size': 12})
-
+    
     for ocs in range(1, num_ocs + 1):
         y = num_ocs - ocs  # OCS 编号从上到下排列
         ocs_schedule = [s for s in schedule if s['ocs'] == ocs]
+        # log.info(f"OCS {ocs} schedule: {ocs_schedule}")
+        offset = T_reconf # NOTE: 偏移量，使得第一次重配置作为系统启动时间，不计入CCT
         for s in ocs_schedule:
+            s_offset = apply_offset(s, offset)
+            
             # 绘制重配置阶段
-            if s['reconf'] > 0.5:
+            if s_offset['reconf'] > 0.5:
                 ax.barh(
                     y,
-                    s['t_reconf_end'] - s['t_reconf_start'],
-                    left=s['t_reconf_start'],
+                    s_offset['t_reconf_end'] - s_offset['t_reconf_start'],
+                    left=s_offset['t_reconf_start'],
                     height=0.8,
                     color=colors['reconfiguration'],
                     edgecolor=colors['reconfiguration_edge_color']
                 )
                 ax.text(
-                    s['t_reconf_start'] + (s['t_reconf_end'] - s['t_reconf_start']) / 2,
+                    s_offset['t_reconf_start'] + (s_offset['t_reconf_end'] - s_offset['t_reconf_start']) / 2,
                     y,
                     "Reconf",
                     ha='center',
@@ -80,19 +104,19 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
                     fontweight='normal'
                 )
             # 绘制传输阶段
-            if s['used'] > 0.5 and s['d'] > 0:
+            if s_offset['used'] > 0.5 and s_offset['d'] > 0:
                 ax.barh(
                     y,
-                    s['t_end'] - s['t_start'],
-                    left=s['t_start'],
+                    s_offset['t_end'] - s_offset['t_start'],
+                    left=s_offset['t_start'],
                     height=0.8,
                     color=colors['transmission'],
                     edgecolor=colors['transmission_edge_color']
                 )
                 ax.text(
-                    s['t_start'] + (s['t_end'] - s['t_start']) / 2,
+                    s_offset['t_start'] + (s_offset['t_end'] - s_offset['t_start']) / 2,
                     y,
-                    f"Step {s['step']}",
+                    f"Step {s_offset['step']}",
                     ha='center',
                     va='center',
                     color='black',

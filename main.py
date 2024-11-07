@@ -15,8 +15,6 @@ def main():
     model = optimize_model(model)
     # 验证解的可行性
     is_valid = validate_solution(model, params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, cct)
-
-    
     if is_valid:
         log.info("解是可行的")
     else:
