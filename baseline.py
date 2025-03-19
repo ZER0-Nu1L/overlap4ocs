@@ -20,7 +20,6 @@ def compute_baseline_schedule(params):
     k = params['k']
     B = params['B']
     T_reconf = params['T_reconf']
-    s = params['s']
     num_steps = params['num_steps']
     configurations = params['configurations']
     m_i = params['m_i']
