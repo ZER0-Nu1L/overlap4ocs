@@ -6,47 +6,28 @@ import logging as log
 
 
 def extract_results(source, **kwargs):
-    """通用的结果提取函数
-    
-    Args:
-        source: 可以是 model 对象或 processors 列表
-        **kwargs: 不同来源需要的额外参数
-            - 对于 model: cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, params
-            - 对于 processors: makespan
-    
-    Returns:
-        schedule: 标准格式的调度结果列表
-    """
-    if isinstance(source, list):  # processors 列表
-        # DAG 调度结果格式转换
+    """通用的结果提取函数，对 gurobi 与 pulp 均适用"""
+    def get_value(var):
+        return var.X if hasattr(var, 'X') else var.varValue
+
+    if isinstance(source, list):  # 对于 processors
         schedule = []
         for processor in source:
             for task_name, start_time, finish_time in processor.tasks:
                 schedule.append({
                     'step': int(task_name.replace('Step', '')) if 'Step' in task_name else 0,
-                    'ocs': processor.name.replace('P', ''),  # 将 'P1' 转换为 '1'
+                    'ocs': processor.name.replace('P', ''),
                     'used': 1,
-                    'd': 1,  # 简化处理，实际可从 task weight 计算
+                    'd': 1,  # 简化处理
                     't_start': start_time,
                     't_end': finish_time,
-                    'reconf': 0,  # 由于 DAG 中的 comm_cost 已经包含在调度中
-                    't_reconf_start': start_time,  # 简化处理
-                    't_reconf_end': start_time     # 简化处理
+                    'reconf': 0,
+                    't_reconf_start': start_time,
+                    't_reconf_end': start_time
                 })
-        # 按开始时间排序
         schedule.sort(key=lambda s: s['t_start'])
-        # 输出调度结果
-        log.info("-----------------------------------")
-        log.info("schedule sorted by start time")
-        log.info("-----------------------------------")
-        for s in schedule:
-            log.info(f"Step {s['step']}, OCS {s['ocs']}, Used: {s['used']}, Data: {s['d']}, "
-                f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
-                f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
         return schedule
-    
-    else:  # Gurobi model
-        # 原有的 model 结果提取逻辑
+    else:
         model = source
         cct = kwargs['cct']
         d = kwargs['d']
@@ -58,46 +39,40 @@ def extract_results(source, **kwargs):
         t_reconf_end = kwargs['t_reconf_end']
         t_step_end = kwargs['t_step_end']
         params = kwargs['params']
-        
-        if model.status == GRB.OPTIMAL:
-            schedule = []
-            k = params['k']
-            num_steps = params['num_steps']
+        k = params['k']
+        num_steps = params['num_steps']
+        solver = params['solver']
 
+        # 判断求解状态，对 gurobi 和 pulp 分别处理
+        if solver == 'gurobi':
+            from gurobipy import GRB
+            optimal = (model.status == GRB.OPTIMAL)
+        elif params['solver'] == 'pulp':
+            import pulp
+            status_str = pulp.LpStatus[model.status]
+            print("Pulp solver status:", status_str)
+            optimal = (status_str == 'Optimal')
+
+        if optimal:
+            schedule = []
             for i in range(1, num_steps + 1):
-                for j in range(1, k+1):
+                for j in range(1, k + 1):
                     schedule.append({
                         'step': i,
                         'ocs': j,
-                        'd': d[i, j].X,
-                        't_start': t_start[i, j].X,
-                        't_end': t_end[i, j].X,
-                        'reconf': r[i, j].X,
-                        't_reconf_start': t_reconf_start[i, j].X,
-                        't_reconf_end': t_reconf_end[i, j].X,
-                        'used': u[i, j].X
+                        'd': get_value(d[(i, j)]),
+                        't_start': get_value(t_start[(i, j)]),
+                        't_end': get_value(t_end[(i, j)]),
+                        'reconf': get_value(r[(i, j)]),
+                        't_reconf_start': get_value(t_reconf_start[(i, j)]),
+                        't_reconf_end': get_value(t_reconf_end[(i, j)]),
+                        'used': get_value(u[(i, j)])
                     })
-            # 按开始时间排序
             schedule.sort(key=lambda s: s['t_start'])
-            # 输出调度结果
-            log.info("-----------------------------------")
-            log.info("schedule sorted by start time")
-            log.info("-----------------------------------")
-            for s in schedule:
-                log.info(f"Step {s['step']}, OCS {s['ocs']}, Used: {s['used']}, Data: {s['d']}, "
-                    f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
-                    f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
-            # log.info("-----------------------------------")
-            # log.info("schedule sorted by OCS")
-            # log.info("-----------------------------------")
-            # for s in sorted(schedule, key=lambda x: x['ocs']):
-            #     log.info(f"OCS {s['ocs']}, Step {s['step']}, Used: {s['used']}, Data: {s['d']}, "
-            #           f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
-            #           f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
             return schedule
         else:
+            import logging as log
             log.info("No optimal solution found.")
-            # return schedule
             return None
 
 

@@ -5,6 +5,9 @@ def get_parameters():
     # 输入参数
     params = {}
 
+    # 0. 求解器配置
+    params['solver'] = 'gurobi'  # 可选: 'gurobi' 或 'pulp'
+
     # 1. 拓扑
     params['k'] = 4  # OCS 数量
     # params['B'] = 400 * 1024 * 1024 / 8  # 带宽，400Gbps，转换为字节/ms
@@ -12,11 +15,11 @@ def get_parameters():
     params['T_reconf'] = 2  # 重配置时间，2毫秒
 
     # 2. CC
-    params['p'] = 16  # 计算节点数量
-    params['m'] = 600 * 1024 * 1024  # 总消息大小，400MB，转换为字节
+    params['p'] = 8  # 计算节点数量
+    params['m'] = 32 * 1024 * 1024  # 总消息大小，400MB，转换为字节
 
     # 3. 算法选择
-    params['algorithm'] = 'a2a_pairwise'
+    params['algorithm'] = 'ar_having-doubling'
     # 可选: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck'
 
     # 4. 算法特定参数计算
@@ -28,10 +31,6 @@ def get_parameters():
             params.update(compute_a2a_pairwise_params(params['p'], params['m']))
         case 'ar_having-doubling':
             params.update(compute_having_doubling_params(params['p'], params['m']))
-        case 'ring':
-            params.update(compute_ring_params(params['p'], params['m']))
-        case 'binary-tree':
-            params.update(compute_binary_tree_params(params['p'], params['m']))
         case _:
             raise ValueError(f"不支持的算法: {algorithm}")
 
