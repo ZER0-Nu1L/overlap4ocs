@@ -6,8 +6,8 @@ import logging as log
 
 def build_model(params, debug_model=False):
     model = gp.Model("Optimization_with_overlapping_tech")
-    model.setParam('LogToConsole', 1)  # 1 表示输出到控制台，0 表示不输出
-    model.setParam('OutputFlag', 1)  # 1 表示启用输出，0 表示禁用所有输出
+    model.setParam('LogToConsole', 0)  # 1 表示输出到控制台，0 表示不输出
+    model.setParam('OutputFlag', 0)  # 1 表示启用输出，0 表示禁用所有输出
     model.setParam('LogFile', './log/gurobi.log')  # 将日志输出到文件
 
     k = params['k']
@@ -113,6 +113,12 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
                 model.addConstr(r[i, j] >= u[i, j] - same_config[i, j],
                                 name=f"r_def_step_{i}_ocs_{j}")
 
+    # NOTE: 配置是为传输服务的
+    for j in range(1, k + 1):
+        for i in range(1, num_steps + 1):
+            model.addConstr(u[i, j] >= r[i, j],
+                            name=f"u_after_r_{i}_ocs_{j}")          
+
     # (7) OCS 活动时间不重叠约束
     if debug_model:
         # pass
@@ -146,10 +152,18 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
                             name=f"step_end_step_{i}_ocs_{j}")
 
     # (9) 步骤依赖性约束
-    for i in range(2, num_steps + 1):
-        for j in range(1, k + 1):
-            model.addConstr(t_start[i, j] >= t_step_end[i - 1],
-                            name=f"trans_after_prev_step_end_step_{i}_ocs_{j}")
+    if debug_model:
+        for i in range(2, num_steps + 1):
+            for j in range(1, k + 1):
+                model.addConstr(
+                    t_step_end[i - 1] <= t_start[i, j] + M * (1 - u[i, j]),
+                    name=f"step_end_before_start_step_{i}_ocs_{j}"
+                )
+    else:
+        for i in range(2, num_steps + 1):
+            for j in range(1, k + 1):
+                model.addConstr(t_start[i, j] >= t_step_end[i - 1],
+                                name=f"trans_after_prev_step_end_step_{i}_ocs_{j}")
 
     # (10) 通信完成时间定义
     # model.addConstr(CCT >= t_step_end[num_steps]) # TODO: FIXME:
@@ -290,7 +304,7 @@ def _validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf
             if i > 1:
                 if debug_model:
                     reconf_after_prev_end_satisfied = t_reconf_start[i, j] >= t_end[i-1, j]
-                    reconf_after_prev_reconf_satisfied = t_reconf_start[i, j] >= t_reconf_start[i-1, j]
+                    # reconf_after_prev_reconf_satisfied = t_reconf_start[i, j] >= t_reconf_start[i-1, j]
 
                     if not reconf_after_prev_end_satisfied:
                         log.info("#Constrain: t_reconf_start[i, j] >= t_end[i-1, j]")
@@ -299,12 +313,12 @@ def _validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf
                         log.info(f"违反约束: reconf_after_prev_end_step_{i}_ocs_{j}")
                         return False
 
-                    if not reconf_after_prev_reconf_satisfied:
-                        log.info("#Constrain: t_reconf_start[i, j] >= t_reconf_start[i-1, j]")
-                        log.info(f"t_reconf_start[{i}, {j}] = {t_reconf_start[i, j]}")
-                        log.info(f"t_reconf_start[{i-1}, {j}] = {t_reconf_start[i-1, j]}")
-                        log.info(f"违反约束: reconf_after_prev_reconf_step_{i}_ocs_{j}")
-                        return False
+                    # if not reconf_after_prev_reconf_satisfied:
+                    #     log.info("#Constrain: t_reconf_start[i, j] >= t_reconf_start[i-1, j]")
+                    #     log.info(f"t_reconf_start[{i}, {j}] = {t_reconf_start[i, j]}")
+                    #     log.info(f"t_reconf_start[{i-1}, {j}] = {t_reconf_start[i-1, j]}")
+                    #     log.info(f"违反约束: reconf_after_prev_reconf_step_{i}_ocs_{j}")
+                    #     return False
                 else:
                     prev_end = max(t_end[i-1, j] * u[i-1, j], t_reconf_end[i-1, j] * r[i-1, j])
                     if t_reconf_start[i, j] < prev_end:
@@ -336,7 +350,8 @@ def _validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf
         if i > 1:
             for j in range(1, k + 1):
                 if t_start[i, j] < t_step_end[i-1]:
-                    log.info("#Constrain: t_start[i, j] < t_step_end[i-1]")
+                    log.info("#Constrain: u[i, j] * t_start[i, j] < t_step_end[i-1]")
+                    log.info(f"u[{i}, {j}] = {u[i, j]}") # DEBUG:
                     log.info(f"t_start[{i}, {j}] = {t_start[i, j]}")
                     log.info(f"t_step_end[{i-1}] = {t_step_end[i-1]}")
                     log.info(f"违反约束: 步骤 {i}, OCS {j} 的开始时间早于上一步骤的完成时间")
@@ -371,7 +386,6 @@ def load_and_validate_solution(params, filename, if_debug_model=False):
     is_valid_for_model = _validate_solution(params, 
                                            d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, cct, 
                                            if_debug_model)
-    if is_valid_for_model:
-        log.info("解在调试模型中是可行的")
-    else:
-        log.info("解在调试模型中是不可行的")
+    
+    model_mode = "调试" if if_debug_model else "正常"
+    log.info(f"解在{model_mode}模型中是{'可行' if is_valid_for_model else '不可行'}的\n")

@@ -5,27 +5,34 @@ import matplotlib.patches as patches
 import logging as log
 
 
-def extract_results(model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, params):
-    if model.status == GRB.OPTIMAL:
-        log.info(f"Optimal CCT: {cct.X * 1000:.2f} ms")
+def extract_results(source, **kwargs):
+    """通用的结果提取函数
+    
+    Args:
+        source: 可以是 model 对象或 processors 列表
+        **kwargs: 不同来源需要的额外参数
+            - 对于 model: cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, params
+            - 对于 processors: makespan
+    
+    Returns:
+        schedule: 标准格式的调度结果列表
+    """
+    if isinstance(source, list):  # processors 列表
+        # DAG 调度结果格式转换
         schedule = []
-        k = params['k']
-        num_steps = params['num_steps']
-
-        for i in range(1, num_steps + 1):
-            for j in range(1, k+1):
+        for processor in source:
+            for task_name, start_time, finish_time in processor.tasks:
                 schedule.append({
-                    'step': i,
-                    'ocs': j,
-                    'd': d[i, j].X,
-                    't_start': t_start[i, j].X,
-                    't_end': t_end[i, j].X,
-                    'reconf': r[i, j].X,
-                    't_reconf_start': t_reconf_start[i, j].X,
-                    't_reconf_end': t_reconf_end[i, j].X,
-                    'used': u[i, j].X
+                    'step': int(task_name.replace('Step', '')) if 'Step' in task_name else 0,
+                    'ocs': processor.name.replace('P', ''),  # 将 'P1' 转换为 '1'
+                    'used': 1,
+                    'd': 1,  # 简化处理，实际可从 task weight 计算
+                    't_start': start_time,
+                    't_end': finish_time,
+                    'reconf': 0,  # 由于 DAG 中的 comm_cost 已经包含在调度中
+                    't_reconf_start': start_time,  # 简化处理
+                    't_reconf_end': start_time     # 简化处理
                 })
-
         # 按开始时间排序
         schedule.sort(key=lambda s: s['t_start'])
         # 输出调度结果
@@ -34,19 +41,64 @@ def extract_results(model, cct, d, t_start, t_end, u, r, t_reconf_start, t_recon
         log.info("-----------------------------------")
         for s in schedule:
             log.info(f"Step {s['step']}, OCS {s['ocs']}, Used: {s['used']}, Data: {s['d']}, "
-                  f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
-                  f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
-        # log.info("-----------------------------------")
-        # log.info("schedule sorted by OCS")
-        # log.info("-----------------------------------")
-        # for s in sorted(schedule, key=lambda x: x['ocs']):
-        #     log.info(f"OCS {s['ocs']}, Step {s['step']}, Used: {s['used']}, Data: {s['d']}, "
-        #           f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
-        #           f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
+                f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
+                f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
         return schedule
-    else:
-        log.info("No optimal solution found.")
-        return None
+    
+    else:  # Gurobi model
+        # 原有的 model 结果提取逻辑
+        model = source
+        cct = kwargs['cct']
+        d = kwargs['d']
+        t_start = kwargs['t_start']
+        t_end = kwargs['t_end']
+        u = kwargs['u']
+        r = kwargs['r']
+        t_reconf_start = kwargs['t_reconf_start']
+        t_reconf_end = kwargs['t_reconf_end']
+        t_step_end = kwargs['t_step_end']
+        params = kwargs['params']
+        
+        if model.status == GRB.OPTIMAL:
+            schedule = []
+            k = params['k']
+            num_steps = params['num_steps']
+
+            for i in range(1, num_steps + 1):
+                for j in range(1, k+1):
+                    schedule.append({
+                        'step': i,
+                        'ocs': j,
+                        'd': d[i, j].X,
+                        't_start': t_start[i, j].X,
+                        't_end': t_end[i, j].X,
+                        'reconf': r[i, j].X,
+                        't_reconf_start': t_reconf_start[i, j].X,
+                        't_reconf_end': t_reconf_end[i, j].X,
+                        'used': u[i, j].X
+                    })
+            # 按开始时间排序
+            schedule.sort(key=lambda s: s['t_start'])
+            # 输出调度结果
+            log.info("-----------------------------------")
+            log.info("schedule sorted by start time")
+            log.info("-----------------------------------")
+            for s in schedule:
+                log.info(f"Step {s['step']}, OCS {s['ocs']}, Used: {s['used']}, Data: {s['d']}, "
+                    f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
+                    f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
+            # log.info("-----------------------------------")
+            # log.info("schedule sorted by OCS")
+            # log.info("-----------------------------------")
+            # for s in sorted(schedule, key=lambda x: x['ocs']):
+            #     log.info(f"OCS {s['ocs']}, Step {s['step']}, Used: {s['used']}, Data: {s['d']}, "
+            #           f"TransTime: {s['t_start']:.6f}-{s['t_end']:.6f}, "
+            #           f"Reconf: {s['reconf']}, ReconfTime: {s['t_reconf_start']:.6f}-{s['t_reconf_end']:.6f}")
+            return schedule
+        else:
+            log.info("No optimal solution found.")
+            # return schedule
+            return None
 
 
 def apply_offset(schedule_item, offset):
@@ -59,7 +111,7 @@ def apply_offset(schedule_item, offset):
         't_reconf_end': schedule_item['t_reconf_end'] - offset
     }
 
-def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='schedule.pdf'):
+def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='schedule.pdf', show=False):
     # 函数实现# 定义颜色和样式
     colors = {
         'transmission': '#dde8fa',  # 蓝色
@@ -71,7 +123,6 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
     }
     # 创建绘图对象
     fig, ax = plt.subplots(figsize=(12, 6))
-
     # 设置字体和字号
     plt.rcParams.update({'font.size': 12})
     
@@ -146,5 +197,6 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
     if save_as_pdf:
         plt.savefig(filename, format='pdf', bbox_inches='tight')
 
-    # 显示图表
-    plt.show()
+    if show:
+        # 显示图表
+        plt.show()

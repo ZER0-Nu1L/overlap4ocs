@@ -1,11 +1,11 @@
 from config import get_parameters
-from model import build_model, optimize_model, load_and_validate_solution
-from baseline import compute_baseline_schedule
-from one_shot import compute_oneshot_schedule
-from scheduler_analysis import extract_results, plot_schedule
+from utils.scheduler_analysis import extract_results, plot_schedule
+from paradigm.model import build_model, optimize_model, load_and_validate_solution
+from paradigm.baseline import compute_baseline_schedule
+from paradigm.one_shot import compute_oneshot_schedule
 import logging as log
 
-def main():    
+def main():
     # 获取参数
     params = get_parameters()
     # .sol or .json
@@ -15,7 +15,6 @@ def main():
     baseline_file    =  f"solution/baseline_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.json"
     oneshot_figure    =  f"figures/oneshot_{params['algorithm']}_t_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
     oneshot_file     =  f"solution/oneshot_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.json"
-
     
     # 构建模型
     model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end = build_model(params)
