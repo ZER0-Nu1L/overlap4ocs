@@ -161,28 +161,3 @@ def build_model(params, debug_model=False):
 
     # 返回模型与决策变量（辅助变量仅在内部使用，不在外部返回）
     return prob, CCT, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end
-
-def optimize_model(model):
-    """
-    调用 PuLP 默认求解器（如 CBC）求解模型
-    """
-    model.solve()
-    return model
-
-def _load_solution(params, filename):
-    """
-    与 gurobi 版本类似，通过解析 JSON 文件重构变量值。
-    注意：Pulp 求解后可调用 varValue 获取变量最优解，通常不必输出到文件，
-    此处仅供格式统一参考。
-    """
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"Solution file {filename} not found.")
-    with open(filename, 'r') as file:
-        solution_data = json.load(file)
-    var_dict = {v['VarName']: v['X'] for v in solution_data['Vars']}
-    # 后续可根据需要实现加载及验证过程
-    return var_dict
-
-def load_and_validate_solution(params, filename, if_debug_model=False):
-    # TODO: 可参考 model_gurobi.py 中的实现
-    log.info("Pulp 版本目前未实现 load_and_validate_solution")

@@ -6,7 +6,7 @@ def get_parameters():
     params = {}
 
     # 0. 求解器配置
-    params['solver'] = 'gurobi'  # 可选: 'gurobi' 或 'pulp'
+    params['solver'] = 'copt'  # 可选: 'gurobi' 或 'pulp' 或 'copt'
 
     # 1. 拓扑
     params['k'] = 4  # OCS 数量

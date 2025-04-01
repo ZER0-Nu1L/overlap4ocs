@@ -34,18 +34,26 @@ def solve_model(model, solver):
         model.optimize()
     elif solver == 'pulp':
         import pulp
+        import multiprocessing
+        num_threads = multiprocessing.cpu_count()
+
+        # For Arm-based Mac platforms.
+        # https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
         if check_platform.is_arm_mac():
-            # For Arm-based Mac platforms.
-            # https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
-            solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', msg=0)
+            solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', msg=True, threads=num_threads)
         else: 
-            solver = pulp.PULP_CBC_CMD(msg=False)
+            solver = pulp.PULP_CBC_CMD(msg=True, threads=num_threads)
+
+        model.solve(solver)        
+    elif solver == 'copt':
+        import pulp
+        solver = COPT()
         model.solve(solver)
-        
     else:
         raise ValueError(f"Unsupported solver: {solver}")
     return model
 
+# TODO: test
 def load_solution(params, filename, solver):
     """
     加载解文件并转换为统一的数据结构。
@@ -81,6 +89,7 @@ def load_solution(params, filename, solver):
         t_step_end[i] = sol.get(f"t_step_end_{i}", 0)
     return cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end
 
+# TODO: test
 def validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, cct, debug_model=False):
     """
     检查解是否满足所有约束，与 model_gurobi.py 中 _validate_solution 保持一致

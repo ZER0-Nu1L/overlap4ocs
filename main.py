@@ -12,7 +12,7 @@ def main():
     solver = params['solver']
     if solver == 'gurobi':
         from paradigm.model_gurobi import build_model
-    elif solver == 'pulp':
+    elif solver == 'pulp' or solver == 'copt':
         from paradigm.model_pulp import build_model
     else:
         raise ValueError(f"不支持的求解器: {solver}")
@@ -84,15 +84,15 @@ def main():
         log.info(f"Improvement over one-shot: {improvement_over_oneshot:.0f}%")
     
     # DEBUG: 
-    import pyperclip
-    if cct_oneshot is not None:
-        data_str = f"{cct_baseline:.2f}\n{cct_oneshot:.2f}\n{(cct_optimized):.2f}"
-        pyperclip.copy(data_str)
-        log.info(f"{cct_baseline:.2f}\n{cct_oneshot:.2f}\n{(cct_optimized):.2f}")
-    else:
-        data_str = f"{cct_baseline:.2f}\nNone\n{(cct_optimized):.2f}"
-        pyperclip.copy(data_str)
-        log.info(f"{cct_baseline:.2f}\nNone\n{(cct_optimized):.2f}")
+    # import pyperclip
+    # if cct_oneshot is not None:
+    #     data_str = f"{cct_baseline:.2f}\n{cct_oneshot:.2f}\n{(cct_optimized):.2f}"
+    #     pyperclip.copy(data_str)
+    #     log.info(f"{cct_baseline:.2f}\n{cct_oneshot:.2f}\n{(cct_optimized):.2f}")
+    # else:
+    #     data_str = f"{cct_baseline:.2f}\nNone\n{(cct_optimized):.2f}"
+    #     pyperclip.copy(data_str)
+    #     log.info(f"{cct_baseline:.2f}\nNone\n{(cct_optimized):.2f}")
         
 
     # 计算改进百分比
