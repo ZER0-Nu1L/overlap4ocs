@@ -5,19 +5,20 @@ from utils import check_platform
 
 def get_solution_value(var):
     """
-    统一获取变量最优解，无论是 Gurobi 还是 PuLP。
+    Uniformly obtain optimal solutions for variables, 
+    whether Gurobi or PuLP or COPT.
     """
     return var.X if hasattr(var, 'X') else var.varValue
 
 def write_model(model, filename, solver):
     """
-    将模型的解写入文件。
-    对于 Gurobi，直接调用 model.write；
-    对于 PuLP，将所有变量及其解转换为 JSON 格式写入文件。
+    Write the solution of the model to a file.
+    For Gurobi, directly call model.write;
+    For PuLP/COPT, convert all variables and their solutions to JSON format and write to a file.
     """
     if solver == 'gurobi':
         model.write(filename)
-    elif solver == 'pulp':
+    elif solver == 'pulp' or solver == 'copt':
         solution = {}
         for var in model.variables():
             solution[var.name] = var.varValue
@@ -28,7 +29,7 @@ def write_model(model, filename, solver):
 
 def solve_model(model, solver):
     """
-    调用相应求解器求解模型。
+    Solve the model using the specified solver.
     """
     if solver == 'gurobi':
         model.optimize()
@@ -38,7 +39,7 @@ def solve_model(model, solver):
         num_threads = multiprocessing.cpu_count()
 
         # For Arm-based Mac platforms.
-        # https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
+        # Reference: https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
         if check_platform.is_arm_mac():
             solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', msg=True, threads=num_threads)
         else: 
@@ -46,7 +47,7 @@ def solve_model(model, solver):
 
         model.solve(solver)        
     elif solver == 'copt':
-        import pulp
+        from pulp import COPT
         solver = COPT()
         model.solve(solver)
     else:

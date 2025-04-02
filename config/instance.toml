@@ -1,0 +1,15 @@
+# Solver configuration
+solver = "gurobi"
+
+# Topology
+k = 2
+B = 50  # Gbps -> (bytes/ms) |  800 * 1024 * 1024 / 8 / params['k']
+T_reconf = 2  # Reconfiguration time (ms)
+
+# CC params
+p = 16  # Number of compute nodes
+m = 32  # Total message size (bytes) | 32 * 1024 * 1024
+
+# CC primitive and Algorithm
+algorithm = "a2a_pairwise"
+# Available: "ar_having-doubling", "a2a_pairwise", "a2a_bruck"

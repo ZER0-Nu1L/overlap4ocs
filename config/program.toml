@@ -1,0 +1,10 @@
+# Example configuration file
+
+# Whether to save the results as a PDF
+save_as_pdf = true
+
+# Debug mode level (0: off, 1: enable debug model, 2: comparison mode)
+debug_mode = 0
+
+# Whether to display the charts
+show = false

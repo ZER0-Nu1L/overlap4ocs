@@ -6,11 +6,11 @@ import logging as log
 
 
 def extract_results(source, **kwargs):
-    """通用的结果提取函数，对 gurobi 与 pulp 均适用"""
+    """Universal result extraction function"""
     def get_value(var):
         return var.X if hasattr(var, 'X') else var.varValue
 
-    if isinstance(source, list):  # 对于 processors
+    if isinstance(source, list):  # NOTE: for "processors" model
         schedule = []
         for processor in source:
             for task_name, start_time, finish_time in processor.tasks:
@@ -18,7 +18,7 @@ def extract_results(source, **kwargs):
                     'step': int(task_name.replace('Step', '')) if 'Step' in task_name else 0,
                     'ocs': processor.name.replace('P', ''),
                     'used': 1,
-                    'd': 1,  # 简化处理
+                    'd': 1,  # For simplicity
                     't_start': start_time,
                     't_end': finish_time,
                     'reconf': 0,
@@ -43,11 +43,10 @@ def extract_results(source, **kwargs):
         num_steps = params['num_steps']
         solver = params['solver']
 
-        # 判断求解状态，对 gurobi 和 pulp 分别处理
         if solver == 'gurobi':
             from gurobipy import GRB
             optimal = (model.status == GRB.OPTIMAL)
-        elif params['solver'] == 'pulp':
+        elif params['solver'] == 'pulp' or params['solver'] == 'copt':
             import pulp
             status_str = pulp.LpStatus[model.status]
             print("Pulp solver status:", status_str)
@@ -77,7 +76,7 @@ def extract_results(source, **kwargs):
 
 
 def apply_offset(schedule_item, offset):
-    """对单个调度项应用时间偏移"""
+    """Apply time offset to a single scheduling item"""
     return {
         **schedule_item,
         't_start': schedule_item['t_start'] - offset,
@@ -87,29 +86,30 @@ def apply_offset(schedule_item, offset):
     }
 
 def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='schedule.pdf', show=False):
-    # 函数实现# 定义颜色和样式
+    # Function implementation
+    # Define colors and styles
     colors = {
-        'transmission': '#dde8fa',  # 蓝色
+        'transmission': '#dde8fa',  # Blue
         'transmission_edge_color': '#738dbb',
-        'reconfiguration': '#fdf2d0',  # 橙色
+        'reconfiguration': '#fdf2d0',  # Orange
         'reconfiguration_edge_color': '#d1b765',
-        'idle': '#DDDDDD',  # 浅灰色（未使用）
+        'idle': '#DDDDDD',  # Light gray (unused)
         'edge_color': 'black'
     }
-    # 创建绘图对象
+    # Create the plot object
     fig, ax = plt.subplots(figsize=(12, 6))
-    # 设置字体和字号
+    # Set font and font size
     plt.rcParams.update({'font.size': 12})
     
     for ocs in range(1, num_ocs + 1):
-        y = num_ocs - ocs  # OCS 编号从上到下排列
+        y = num_ocs - ocs  # OCS numbers are arranged from top to bottom
         ocs_schedule = [s for s in schedule if s['ocs'] == ocs]
         # log.info(f"OCS {ocs} schedule: {ocs_schedule}")
-        offset = T_reconf # NOTE: 偏移量，使得第一次重配置作为系统启动时间，不计入CCT
+        offset = T_reconf  # NOTE: Offset to treat the first reconfiguration as system startup time, not included in CCT
         for s in ocs_schedule:
             s_offset = apply_offset(s, offset)
             
-            # 绘制重配置阶段
+            # Plot the reconfiguration phase
             if s_offset['reconf'] > 0.5:
                 ax.barh(
                     y,
@@ -129,7 +129,7 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
                     fontsize=10,
                     fontweight='normal'
                 )
-            # 绘制传输阶段
+            # Plot the transmission phase
             if s_offset['used'] > 0.5 and s_offset['d'] > 0:
                 ax.barh(
                     y,
@@ -150,28 +150,28 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
                     fontweight='normal'
                 )
 
-    # 设置 y 轴刻度和标签
+    # Set y-axis ticks and labels
     ax.set_yticks(range(num_ocs))
     ax.set_yticklabels([f"OCS {i}" for i in range(num_ocs, 0, -1)])
-    ax.set_ylim(-0.5, num_ocs - 0.5)  # 调整 y 轴范围
+    ax.set_ylim(-0.5, num_ocs - 0.5)  # Adjust y-axis range
 
-    # 设置 x 轴标签、标题和网格
+    # Set x-axis label, title, and grid
     ax.set_xlabel("Time (s)")
     ax.set_title("Optimized Transmission and Reconfiguration Schedule")
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 
-    # 添加图例
+    # Add legend
     reconf_patch = patches.Patch(color=colors['reconfiguration'], label='Reconfiguration')
     trans_patch = patches.Patch(color=colors['transmission'], label='Transmission')
     ax.legend(handles=[reconf_patch, trans_patch], loc='upper right')
 
-    # 调整布局
+    # Adjust layout
     plt.tight_layout()
 
-    # 保存为 PDF（如果需要）
+    # Save as PDF (if needed)
     if save_as_pdf:
         plt.savefig(filename, format='pdf', bbox_inches='tight')
 
     if show:
-        # 显示图表
+        # Display the chart
         plt.show()

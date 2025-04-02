@@ -1,11 +1,10 @@
 import platform
 
 def is_arm_mac():
-    # 获取系统信息
+    # Obtain system information
     system = platform.system()
     machine = platform.machine()
 
-    # macOS 的系统名称为 'Darwin'，Arm-based Mac 的机器类型为 'arm64'
     return system == 'Darwin' and machine == 'arm64'
 
 if __name__ == "__main__":
