@@ -4,6 +4,7 @@ from paradigm.baseline import compute_baseline_schedule
 from paradigm.one_shot import compute_oneshot_schedule
 from paradigm.ideal import compute_ideal_time
 import logging as log
+import argparse
 import toml
 
 def load_program_config(config_path='config/program.toml'):
@@ -19,6 +20,11 @@ def load_program_config(config_path='config/program.toml'):
         }
 
 def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Run the scheduling program with custom parameters.")
+    parser.add_argument('--config', type=str, default='config/instance.toml', help='Path to the instance configuration file.')
+    args = parser.parse_args()
+
     # Load program configuration
     program_config = load_program_config('config/program.toml')
     show = program_config.get("show", False)
@@ -26,7 +32,7 @@ def main():
     debug_mode = program_config.get("debug_mode", 0)
 
     # Get parameter
-    params = get_parameters('config/instance.toml')
+    params = get_parameters(args.config)
 
     # .sol or .json
     solution_figure   =  f"figures/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
