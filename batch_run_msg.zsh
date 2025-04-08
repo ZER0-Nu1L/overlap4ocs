@@ -10,6 +10,15 @@ if [[ ! -d "logs" ]]; then
     mkdir -p logs
 fi
 
+# Extract parameters from the base config for the log filename (comment-aware)
+alg=$(grep -E "^\s*algorithm\s*=" config/instance.toml | awk -F'=' '{print $2}' | sed 's/#.*//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr -d '"')
+p=$(grep -E "^\s*p\s*=" config/instance.toml | awk -F'=' '{print $2}' | sed 's/#.*//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+k=$(grep -E "^\s*k\s*=" config/instance.toml | awk -F'=' '{print $2}' | sed 's/#.*//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+B=$(grep -E "^\s*B\s*=" config/instance.toml | awk -F'=' '{print $2}' | sed 's/#.*//g' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+# Create the summary log file
+summary_log_file="logs/instance_alg=${alg}_p=${p},k=${k},B=${B},m=-.log"
+
 # Array of m values to use
 m_values=(32 64 128 256 512 1024)
 
@@ -20,7 +29,7 @@ CCT_ours=()
 CCT_ideal=()
 
 # Extract other parameters from the original config file
-config_params=$(grep -v "m = " config/instance.toml | grep -v "^#" | grep "=" | sed 's/^[ \t]*//')
+config_params=$(grep -v "^#" config/instance.toml | grep -v "^ *m *=" | grep "=" | sed 's/^[ \t]*//;s/[ \t]*$//')
 
 # Create config files and run for each m value
 for m in ${m_values[@]}; do
@@ -50,7 +59,7 @@ for m in ${m_values[@]}; do
     
     echo "Completed m=${m}"
     
-    # Check if notify tool exists and use it (NOTE:)
+    # Check if notify tool exists and use it
     if which notify >/dev/null 2>&1; then
         notify -m "instance_${m} finish"
     fi
@@ -87,7 +96,7 @@ echo "CCT_baseline = [${(j:, :)CCT_baseline}]"
 echo "CCT_ours = [${(j:, :)CCT_ours}]"
 echo "CCT_ideal = [${(j:, :)CCT_ideal}]"
 
-# Also write summary to log file
+# Write summary to log file with the new naming format
 {
     echo "Results Summary:"
     echo "Configuration Parameters:"
@@ -98,9 +107,13 @@ echo "CCT_ideal = [${(j:, :)CCT_ideal}]"
     echo "CCT_baseline = [${(j:, :)CCT_baseline}]"
     echo "CCT_ours = [${(j:, :)CCT_ours}]"
     echo "CCT_ideal = [${(j:, :)CCT_ideal}]"
-} > logs/instance_summary.log
+} > "${summary_log_file}"
 
-echo "Summary written to logs/instance_summary.log"
+echo "Summary written to ${summary_log_file}"
+
+# Clean up temporary config files
+echo "Cleaning up temporary configuration files..."
+rm -f config/config_batch/instance_m=*.toml
 
 if which notify >/dev/null 2>&1; then
     notify -m "All instance finish running!"

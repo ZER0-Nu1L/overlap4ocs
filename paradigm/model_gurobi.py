@@ -8,7 +8,10 @@ def build_model(params, debug_model=False):
     model = gp.Model("Optimization_with_overlapping_tech")
     model.setParam('LogToConsole', 0)  # NOTE: 1 means output to console, 0 means no output
     model.setParam('OutputFlag', 0)    # NOTE: 1 enables output, 0 disables all output
-    model.setParam('LogFile', './log/gurobi.log')  # NOTE:  Log output to a file
+    # Create logs directory if it doesn't exist
+    if not os.path.exists('./logs'):
+        os.makedirs('./logs')
+    model.setParam('LogFile', './logs/gurobi.log')  # NOTE: Log output to a file
 
     k = params['k']
     num_steps = params['num_steps']
