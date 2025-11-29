@@ -7,6 +7,8 @@ import logging as log
 import argparse
 import toml
 import os
+import json
+from datetime import datetime
 
 def load_program_config(config_path='config/program.toml'):
     try:
@@ -20,14 +22,24 @@ def load_program_config(config_path='config/program.toml'):
             "show": False
         }
 
+def write_metrics(metrics_path, payload):
+    directory = os.path.dirname(metrics_path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(metrics_path, 'w') as metrics_file:
+        json.dump(payload, metrics_file, indent=2)
+
 def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Run the scheduling program with custom parameters.")
     parser.add_argument('--config', type=str, default='config/instance.toml', help='Path to the instance configuration file.')
+    parser.add_argument('--program-config', type=str, default='config/program.toml', help='Path to the program configuration file.')
+    parser.add_argument('--run-id', type=str, default=None, help='Optional identifier for this run (stored in metrics).')
+    parser.add_argument('--metrics-file', type=str, default=None, help='If provided, write aggregated results to this JSON file.')
     args = parser.parse_args()
 
     # Load program configuration
-    program_config = load_program_config('config/program.toml')
+    program_config = load_program_config(args.program_config)
     show = program_config.get("show", False)
     save_as_pdf = program_config.get("save_as_pdf", True)
     debug_mode = program_config.get("debug_mode", 0)
@@ -69,7 +81,7 @@ def main():
     plot_schedule(schedule, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=solution_figure, show=show)
     write_model(model, solution_file, solver)
 
-    # [Paradigm] Baseline
+    # [Paradigm] Baseline (naive intra-collective reconfiguration)
     cct_baseline, schedule_baseline = compute_baseline_schedule(params)
     plot_schedule(schedule_baseline, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=baseline_figure, show=show)
     write_model(model, baseline_file, solver)
@@ -87,6 +99,8 @@ def main():
     cct_optimized = get_solution_value(cct) - params['T_reconf']
     cct_baseline_adj = cct_baseline - params['T_reconf']
     log.info("\nComparison:")
+    cct_oneshot_adj = None
+    improvement_over_oneshot = None
     if cct_oneshot is not None:
         cct_oneshot_adj = cct_oneshot - params['T_reconf']
         log.info(f"One-shot CCT: {cct_oneshot_adj * 1000:.0f} μs")
@@ -128,6 +142,43 @@ def main():
     elif debug_mode == 2:
         compare_file = "solution/modified_solution_k=2_p=8.json"
         load_and_validate_solution(params, compare_file, if_debug_model=True, solver=solver)
+
+    if args.metrics_file:
+        metrics_payload = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "run_id": args.run_id,
+            "config_file": args.config,
+            "program_config": args.program_config,
+            "solver": solver,
+            "status": "success",
+            "figures": {
+                "solution": solution_figure,
+                "baseline": baseline_figure,
+                "oneshot": oneshot_figure if cct_oneshot is not None else None,
+                "debug": debug_solution_figure if debug_mode == 1 else None
+            },
+            "solutions": {
+                "solution": solution_file,
+                "baseline": baseline_file,
+                "oneshot": oneshot_file if cct_oneshot is not None else None,
+                "debug": debug_solution_file if debug_mode == 1 else None
+            },
+            "cct": {
+                "optimized": cct_optimized,
+                "baseline": cct_baseline_adj,
+                "oneshot": cct_oneshot_adj if cct_oneshot is not None else None,
+                "ideal": cct_ideal
+            },
+            "improvement_percent": {
+                "over_baseline": improvement_over_baseline,
+                "over_oneshot": improvement_over_oneshot if cct_oneshot is not None else None
+            },
+            "params": params,
+            "notes": {
+                "debug_mode": debug_mode
+            }
+        }
+        write_metrics(args.metrics_file, metrics_payload)
 
 if __name__ == "__main__":
     log.basicConfig(level=log.INFO, format='%(message)s')

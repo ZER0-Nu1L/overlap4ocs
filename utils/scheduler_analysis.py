@@ -181,7 +181,7 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
     ax.set_ylim(-0.5, num_ocs - 0.5)  # Adjust y-axis range
 
     # Set x-axis label, title, and grid
-    ax.set_xlabel("Time (s)")
+    ax.set_xlabel("Time (ms)")
     ax.set_title("Optimized Transmission and Reconfiguration Schedule")
     ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 

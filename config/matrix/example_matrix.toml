@@ -1,0 +1,16 @@
+matrix_id = "k2_p16_sweep"
+solver = "pulp"
+program_config = "config/program.toml"
+message_sizes_mib = [2, 8, 32, 128, 512]  # in MB
+algorithms = ["ar_having-doubling", "a2a_pairwise", "a2a_bruck"]
+
+[topology]
+k = 2
+p = 16
+B = 50  # bytes/ms (50 GBps)
+T_reconf = 0.2
+T_lat = 0.02
+
+[output]
+config_dir  = "logs/generated_configs/ar_k2_p16_sweep"
+results_csv = "logs/matrix_results-ar_k2_p16_sweep.csv"
