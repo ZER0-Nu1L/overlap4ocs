@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Dict, List
 
@@ -22,16 +23,38 @@ def load_matrix_spec(path: Path) -> dict:
     return spec
 
 
+def parse_message_size(value: float | int | str) -> Decimal:
+    """Return a Decimal representation of the MiB value."""
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError) as exc:
+        raise ValueError(f"Invalid message size '{value}'") from exc
+
+
+def format_message_label(value: Decimal) -> str:
+    """Build a filename-safe suffix that preserves fractional values."""
+    if value == value.to_integral():
+        return f"{int(value):06d}"
+    text = format(value.normalize(), 'f').rstrip('0').rstrip('.')
+    if not text:
+        text = "0"
+    return text.replace('.', '_')
+
+
 def to_instance(topology: dict, algorithm: str, message_mib: float, solver: str) -> dict:
+    message_value = parse_message_size(message_mib)
     instance = dict(topology)
     instance["algorithm"] = algorithm
     instance["solver"] = solver
-    instance["m"] = int(message_mib)
+    if message_value == message_value.to_integral():
+        instance["m"] = int(message_value)
+    else:
+        instance["m"] = float(message_value)
     return instance
 
 
 def config_filename(matrix_id: str, algorithm: str, message_mib: float) -> str:
-    msg = f"{message_mib:06.0f}".replace('.', '_')
+    msg = format_message_label(parse_message_size(message_mib))
     return f"{matrix_id}_{algorithm}_m{msg}.toml"
 
 
