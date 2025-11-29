@@ -19,6 +19,7 @@ def build_model(params, debug_model=False):
     m_i = params['m_i']
     B = params['B']
     T_reconf = params['T_reconf']
+    T_lat = params.get('T_lat', 0)
     M = params['m']  # Large constant value for big-M method 
     M_config = max(configurations.values())
 
@@ -43,12 +44,12 @@ def build_model(params, debug_model=False):
     # Constraints
     add_constraints(model, params, d, t_start, t_end, u, r,
                     t_reconf_start, t_reconf_end, t_step_end,
-                    same_config, t_prev_end, cct, debug_model)
+                    same_config, t_prev_end, cct, T_lat, debug_model)
     return model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end
 
 
 def add_constraints(model, params, d, t_start, t_end, u, r,
-                    t_reconf_start, t_reconf_end, t_step_end, same_config, t_prev_end, CCT, debug_model=False):
+                    t_reconf_start, t_reconf_end, t_step_end, same_config, t_prev_end, CCT, T_lat, debug_model=False):
     k = params['k']
     num_steps = params['num_steps']
     m_i = params['m_i']
@@ -65,7 +66,7 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
     # (2) Bandwidth constraint
     for i in range(1, num_steps + 1):
         for j in range(1, k + 1):
-            model.addConstr(t_end[i, j] - t_start[i, j] == d[i, j] / B,
+            model.addConstr(t_end[i, j] - t_start[i, j] == d[i, j] / B + T_lat * u[i, j],
                             name=f"bandwidth_step_{i}_ocs_{j}")
 
     # (3) Usage indicator variable constraint
@@ -259,11 +260,12 @@ def _validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf
 
         for j in range(1, k + 1):
             # (2) Bandwidth constraint
-            if abs((t_end[i, j] - t_start[i, j]) - d[i, j] / B) > epsilon:
-                log.info("#Constraint: (t_end[i, j] - t_start[i, j]) - d[i, j] / B")
+            if abs((t_end[i, j] - t_start[i, j]) - (d[i, j] / B + T_lat * u[i, j])) > epsilon:
+                log.info("#Constraint: (t_end[i, j] - t_start[i, j]) - (d[i, j] / B + T_lat * u[i, j])")
                 log.info(f"t_end[{i}, {j}] = {t_end[i, j]}")
                 log.info(f"t_start[{i}, {j}] = {t_start[i, j]}")
                 log.info(f"d[{i}, {j}] = {d[i, j]}")
+                log.info(f"u[{i}, {j}] = {u[i, j]}")
                 log.info(f"Constraint violated: Bandwidth limit not satisfied at step {i}, OCS {j}")
                 return False
 

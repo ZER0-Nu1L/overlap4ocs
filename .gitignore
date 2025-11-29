@@ -2,8 +2,10 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,visualstudiocode,pycharm,python,jupyternotebooks
 
 ### My Project ###
-figure/
+figures/
 solution/
+test/
+logs/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks

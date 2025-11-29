@@ -6,6 +6,7 @@ from paradigm.ideal import compute_ideal_time
 import logging as log
 import argparse
 import toml
+import os
 
 def load_program_config(config_path='config/program.toml'):
     try:
@@ -34,6 +35,10 @@ def main():
     # Get parameter
     params = get_parameters(args.config)
 
+    # Ensure output directories exist
+    os.makedirs('figures', exist_ok=True)
+    os.makedirs('solution', exist_ok=True)
+    
     # .sol or .json
     solution_figure   =  f"figures/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
     solution_file    =  f"solution/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.json"

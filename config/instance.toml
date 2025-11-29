@@ -5,6 +5,7 @@ solver = "gurobi"
 k = 2
 B = 50  # Gbps -> (bytes/ms) |  800 * 1024 * 1024 / 8 / params['k']
 T_reconf = 2  # Reconfiguration time (ms)
+T_lat = 0.02 # End-to-end base latency (ms)
 
 # CC params
 p = 16  # Number of compute nodes

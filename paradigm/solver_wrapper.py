@@ -101,6 +101,7 @@ def validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_
     B = params['B']
     T_reconf = params['T_reconf']
     configurations = params['configurations']
+    T_lat = params.get('T_lat', 0)
     epsilon = 1e-6
 
     for i in range(1, num_steps + 1):
@@ -111,9 +112,10 @@ def validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_
             return False
 
         for j in range(1, k + 1):
-            # (2) 带宽限制约束：t_end - t_start == d/B
-            if abs((t_end[(i, j)] - t_start[(i, j)]) - d[(i, j)] / B) > epsilon:
-                log.info(f"步骤 {i}, OCS {j} 带宽限制不满足: t_end-t_start= {t_end[(i, j)] - t_start[(i, j)]}, d/B= {d[(i, j)] / B}")
+            # (2) 带宽+时延限制约束：t_end - t_start == d/B + T_lat * u
+            expected_duration = d[(i, j)] / B + T_lat * u[(i, j)]
+            if abs((t_end[(i, j)] - t_start[(i, j)]) - expected_duration) > epsilon:
+                log.info(f"步骤 {i}, OCS {j} 带宽+时延限制不满足: t_end-t_start= {t_end[(i, j)] - t_start[(i, j)]}, expected= {expected_duration}")
                 return False
 
             # (3) 使用指示变量约束：若 d>0，则 u 应为1

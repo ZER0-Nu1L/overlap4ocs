@@ -14,6 +14,7 @@ def get_parameters(config_file = 'config/instance.toml'):
         'k': 2,                             # Number of OCS
         'B': 800 * 1024 * 1024 / 8 / 2,     # Bandwidth per OCS (bytes/ms)
         'T_reconf': 2,                      # Reconfiguration time (ms)
+        'T_lat': 0.01,                      # End-to-end base latency (ms)
         'p': 16,                            # Number of compute nodes
         'm': 32 * 1024 * 1024,              # Total message size (bytes)
         'algorithm': 'ar_having-doubling'   # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck'
@@ -71,7 +72,7 @@ def validate_parameters(params):
         raise ValueError(f"Unsupported solver: {solver}")
     
     # Validate numeric parameters
-    for param_name in ['k', 'B', 'T_reconf', 'p', 'm']:
+    for param_name in ['k', 'B', 'T_reconf', 'T_lat', 'p', 'm']:
         value = params.get(param_name)
         if not isinstance(value, (int, float)) or value <= 0:
             raise ValueError(f"Parameter {param_name} must be a positive number")

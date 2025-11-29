@@ -4,5 +4,6 @@ def compute_ideal_time(params):
     k = params['k']    
     m_i = params['m_i']
     num_steps = params['num_steps']
-    CCT = sum(m_i[i] / B / k for i in range(1, num_steps + 1))
+    T_lat = params.get('T_lat', 0)
+    CCT = sum((m_i[i] / B / k) + T_lat for i in range(1, num_steps + 1))
     return CCT

@@ -10,6 +10,8 @@ def extract_results(source, **kwargs):
     def get_value(var):
         return var.X if hasattr(var, 'X') else var.varValue
 
+    T_lat = kwargs.get('params', {}).get('T_lat', 0)
+
     if isinstance(source, list):  # NOTE: for "processors" model
         schedule = []
         for processor in source:
@@ -23,7 +25,8 @@ def extract_results(source, **kwargs):
                     't_end': finish_time,
                     'reconf': 0,
                     't_reconf_start': start_time,
-                    't_reconf_end': start_time
+                    't_reconf_end': start_time,
+                    't_lat': T_lat
                 })
         schedule.sort(key=lambda s: s['t_start'])
         return schedule
@@ -56,6 +59,7 @@ def extract_results(source, **kwargs):
             schedule = []
             for i in range(1, num_steps + 1):
                 for j in range(1, k + 1):
+                    is_used = get_value(u[(i, j)])
                     schedule.append({
                         'step': i,
                         'ocs': j,
@@ -65,7 +69,8 @@ def extract_results(source, **kwargs):
                         'reconf': get_value(r[(i, j)]),
                         't_reconf_start': get_value(t_reconf_start[(i, j)]),
                         't_reconf_end': get_value(t_reconf_end[(i, j)]),
-                        'used': get_value(u[(i, j)])
+                        'used': is_used,
+                        't_lat': T_lat if is_used > 0.5 else 0.0
                     })
             schedule.sort(key=lambda s: s['t_start'])
             return schedule
@@ -82,7 +87,8 @@ def apply_offset(schedule_item, offset):
         't_start': schedule_item['t_start'] - offset,
         't_end': schedule_item['t_end'] - offset,
         't_reconf_start': schedule_item['t_reconf_start'] - offset,
-        't_reconf_end': schedule_item['t_reconf_end'] - offset
+        't_reconf_end': schedule_item['t_reconf_end'] - offset,
+        't_lat': schedule_item.get('t_lat', 0.0)
     }
 
 def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='schedule.pdf', show=False):
@@ -91,6 +97,8 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
     colors = {
         'transmission': '#dde8fa',  # Blue
         'transmission_edge_color': '#738dbb',
+        'latency': '#ffdce5',  # Pink for latency slot
+        'latency_edge_color': '#d58b9f',
         'reconfiguration': '#fdf2d0',  # Orange
         'reconfiguration_edge_color': '#d1b765',
         'idle': '#DDDDDD',  # Light gray (unused)
@@ -129,18 +137,35 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
                     fontsize=10,
                     fontweight='normal'
                 )
-            # Plot the transmission phase
+            # Plot the latency + transmission phases
             if s_offset['used'] > 0.5 and s_offset['d'] > 0:
-                ax.barh(
-                    y,
-                    s_offset['t_end'] - s_offset['t_start'],
-                    left=s_offset['t_start'],
-                    height=0.8,
-                    color=colors['transmission'],
-                    edgecolor=colors['transmission_edge_color']
-                )
+                total_duration = s_offset['t_end'] - s_offset['t_start']
+                latency_duration = min(max(s_offset.get('t_lat', 0.0), 0.0), max(total_duration, 0.0))
+                payload_duration = max(total_duration - latency_duration, 0.0)
+
+                if latency_duration > 0:
+                    ax.barh(
+                        y,
+                        latency_duration,
+                        left=s_offset['t_start'],
+                        height=0.8,
+                        color=colors['latency'],
+                        edgecolor=colors['latency_edge_color']
+                    )
+
+                if payload_duration > 0:
+                    ax.barh(
+                        y,
+                        payload_duration,
+                        left=s_offset['t_start'] + latency_duration,
+                        height=0.8,
+                        color=colors['transmission'],
+                        edgecolor=colors['transmission_edge_color']
+                    )
+
+                text_center = s_offset['t_start'] + latency_duration + (payload_duration / 2 if payload_duration > 0 else latency_duration / 2)
                 ax.text(
-                    s_offset['t_start'] + (s_offset['t_end'] - s_offset['t_start']) / 2,
+                    text_center,
                     y,
                     f"Step {s_offset['step']}",
                     ha='center',
@@ -162,8 +187,9 @@ def plot_schedule(schedule, num_ocs, T_reconf, save_as_pdf=False, filename='sche
 
     # Add legend
     reconf_patch = patches.Patch(color=colors['reconfiguration'], label='Reconfiguration')
-    trans_patch = patches.Patch(color=colors['transmission'], label='Transmission')
-    ax.legend(handles=[reconf_patch, trans_patch], loc='upper right')
+    latency_patch = patches.Patch(color=colors['latency'], label='Latency overhead')
+    trans_patch = patches.Patch(color=colors['transmission'], label='Payload transmission')
+    ax.legend(handles=[reconf_patch, latency_patch, trans_patch], loc='upper right')
 
     # Adjust layout
     plt.tight_layout()

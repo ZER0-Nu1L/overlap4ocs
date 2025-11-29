@@ -3,6 +3,7 @@ def compute_baseline_schedule(params):
     k = params['k']
     B = params['B']
     T_reconf = params['T_reconf']
+    T_lat = params.get('T_lat', 0)
     num_steps = params['num_steps']
     configurations = params['configurations']
     m_i = params['m_i']
@@ -30,11 +31,12 @@ def compute_baseline_schedule(params):
                 t_reconf_start = available_time[j]
                 t_reconf_end = available_time[j]  # No reconfiguration needed
 
-            # Transmission start time
+            # Transmission start/end times (payload + latency cost)
+            used = 1 if m_i[i] > 0 else 0
+            payload_time = ((m_i[i] / k) / B) if used else 0.0
+            total_trans_time = payload_time + (T_lat if used else 0.0)
             t_trans_start = t_reconf_end
-            # Transmission end time
-            trans_time = (m_i[i] / k) / B
-            t_trans_end = t_trans_start + trans_time
+            t_trans_end = t_trans_start + total_trans_time
 
             # Update the available time for the OCS
             available_time[j] = t_trans_end
@@ -42,9 +44,6 @@ def compute_baseline_schedule(params):
             # Update the last configuration
             if reconf_needed:
                 last_config[j] = current_config
-
-            # Mark whether it is used
-            used = 1 if m_i[i] > 0 else 0
 
             # Add the current activity to the schedule list
             schedule.append({
@@ -56,7 +55,8 @@ def compute_baseline_schedule(params):
                 'reconf': reconf_needed,
                 't_reconf_start': t_reconf_start,
                 't_reconf_end': t_reconf_end,
-                'used': used
+                'used': used,
+                't_lat': T_lat if used else 0.0
             })
 
     # Calculate step completion time and communication completion time

@@ -27,6 +27,7 @@ def compute_oneshot_schedule(params):
     B = params['B']
     m_i = params['m_i']
     num_steps = params['num_steps']
+    T_lat = params.get('T_lat', 0)
     
     # First, add one reconfiguration for each OCS
     T_reconf = params['T_reconf']
@@ -40,7 +41,8 @@ def compute_oneshot_schedule(params):
             'reconf': 1,  # Requires reconfiguration
             't_reconf_start': 0,
             't_reconf_end': T_reconf,
-            'used': 0
+            'used': 0,
+            't_lat': 0.0
         })
     
     # Update the completion time of step 0 to the reconfiguration time
@@ -49,7 +51,8 @@ def compute_oneshot_schedule(params):
     # Iterate through each step
     for i in range(1, num_steps + 1):
         current_config = configurations[i]
-        trans_time = (m_i[i]) / B / d
+        payload_time = (m_i[i]) / B / d if m_i[i] > 0 else 0.0
+        trans_time = payload_time + (T_lat if m_i[i] > 0 else 0.0)
         t_trans_start = t_step_end[i-1]
         t_trans_end = t_trans_start + trans_time
         
@@ -68,7 +71,8 @@ def compute_oneshot_schedule(params):
                 'reconf': 0,  # No reconfiguration required
                 't_reconf_start': t_trans_start,
                 't_reconf_end': t_trans_start,
-                'used': 1 if m_i[i] > 0 else 0
+                'used': 1 if m_i[i] > 0 else 0,
+                't_lat': T_lat if m_i[i] > 0 else 0.0
             })
         
         # Update the completion time of the current step

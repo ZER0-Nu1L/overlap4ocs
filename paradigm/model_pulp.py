@@ -5,6 +5,7 @@ def build_model(params, debug_model=False):
     k = params['k']
     B = params['B']
     T_reconf = params['T_reconf']
+    T_lat = params.get('T_lat', 0)
     m_i = params['m_i']
     configurations = params['configurations']
     M = params['m']  # Large constant value for big-M method 
@@ -54,7 +55,7 @@ def build_model(params, debug_model=False):
     # (2) Bandwidth constraint
     for i in range(1, num_steps+1):
         for j in range(1, k+1):
-            prob += (t_end[(i,j)] - t_start[(i,j)] == (1.0 / B) * d[(i,j)],
+            prob += (t_end[(i,j)] - t_start[(i,j)] == (1.0 / B) * d[(i,j)] + T_lat * u[(i,j)],
                      f"bandwidth_step_{i}_{j}")
 
     # (3) Usage indicator variable constraint
