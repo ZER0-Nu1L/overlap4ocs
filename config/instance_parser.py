@@ -12,9 +12,9 @@ def get_parameters(config_file = 'config/instance.toml'):
     params = {
         'solver': 'gurobi',                 # Optimization solver: 'gurobi', 'pulp', or 'copt'
         'k': 2,                             # Number of OCS
-        'B': 800 * 1024 * 1024 / 8 / 2,     # Bandwidth per OCS (bytes/ms)
-        'T_reconf': 2,                      # Reconfiguration time (ms)
-        'T_lat': 0.01,                      # End-to-end base latency (ms)
+        'B': 400 * 1024 * 1024 / 8,     # Bandwidth per OCS (bytes/ms)
+        'T_reconf': 0.2,                      # Reconfiguration time (ms)
+        'T_lat': 0.02,                      # End-to-end base latency (ms)
         'p': 16,                            # Number of compute nodes
         'm': 32 * 1024 * 1024,              # Total message size (bytes)
         'algorithm': 'ar_having-doubling'   # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck'
