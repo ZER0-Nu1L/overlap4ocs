@@ -17,7 +17,9 @@ def get_parameters(config_file = 'config/instance.toml'):
         'T_lat': 0.02,                      # End-to-end base latency (ms)
         'p': 16,                            # Number of compute nodes
         'm': 32 * 1024 * 1024,              # Total message size (bytes)
-        'algorithm': 'ar_having-doubling'   # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck'
+        'algorithm': 'ar_having-doubling',  # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck'
+        'solver_gap': None,                 # Relative MIP gap tolerance (None -> solver default)
+        'solver_time_limit': None,          # Time limit in seconds (None -> solver default)
     }
     params['B'] = params['B'] / params['k']
 
@@ -82,6 +84,14 @@ def validate_parameters(params):
     valid_algorithms = ['ar_having-doubling', 'a2a_pairwise', 'a2a_bruck']
     if algorithm not in valid_algorithms:
         raise ValueError(f"Algorithm must be one of {valid_algorithms}")
+
+    solver_gap = params.get('solver_gap')
+    if solver_gap is not None and solver_gap < 0:
+        raise ValueError("solver_gap must be non-negative when provided")
+
+    solver_time_limit = params.get('solver_time_limit')
+    if solver_time_limit is not None and solver_time_limit < 0:
+        raise ValueError("solver_time_limit must be non-negative when provided")
 
 ## Having Doubling（Rabenseifner's Algorithm）
 def compute_having_doubling_params(p, m):

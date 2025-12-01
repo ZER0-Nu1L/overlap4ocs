@@ -2,6 +2,7 @@ import os
 import json
 import logging as log
 from utils import check_platform
+from paradigm.warm_start import apply_warm_start
 
 def get_solution_value(var):
     """
@@ -27,32 +28,59 @@ def write_model(model, filename, solver):
     else:
         raise ValueError(f"Unsupported solver: {solver}")
 
-def solve_model(model, solver):
-    """
-    Solve the model using the specified solver.
-    """
+def solve_model(
+    model,
+    solver,
+    warm_start_payload=None,
+    warm_start_variables=None,
+    warm_start_label: str | None = None,
+    solver_gap: float | None = None,
+    solver_time_limit: float | None = None,
+):
+    """Solve the model and optionally apply a warm start before optimization."""
+    warm_start_applied = False
+    if warm_start_payload and warm_start_variables:
+        warm_start_applied = apply_warm_start(solver, warm_start_variables, warm_start_payload)
+        if warm_start_applied and warm_start_label:
+            log.info(warm_start_label)
+
     if solver == 'gurobi':
+        if solver_gap is not None:
+            model.setParam('MIPGap', float(solver_gap))
+        if solver_time_limit and solver_time_limit > 0:
+            model.setParam('TimeLimit', float(solver_time_limit))
         model.optimize()
     elif solver == 'pulp':
         import pulp
         import multiprocessing
         num_threads = multiprocessing.cpu_count()
+        time_limit = solver_time_limit if (solver_time_limit and solver_time_limit > 0) else None
+        solver_kwargs = {
+            'msg': True,
+            'threads': num_threads,
+        }
+        if solver_gap is not None:
+            solver_kwargs['gapRel'] = solver_gap
+        if time_limit is not None:
+            solver_kwargs['timeLimit'] = time_limit
 
         # For Arm-based Mac platforms.
         # Reference: https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
         if check_platform.is_arm_mac():
-            solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', msg=True, threads=num_threads)
+            solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', **solver_kwargs)
         else: 
-            solver = pulp.PULP_CBC_CMD(msg=True, threads=num_threads)
+            solver = pulp.PULP_CBC_CMD(**solver_kwargs)
 
         model.solve(solver)        
     elif solver == 'copt':
         from pulp import COPT
         solver = COPT()
+        if solver_gap is not None or (solver_time_limit and solver_time_limit > 0):
+            log.warning("solver_gap/solver_time_limit are not currently applied for COPT solver")
         model.solve(solver)
     else:
         raise ValueError(f"Unsupported solver: {solver}")
-    return model
+    return model, warm_start_applied
 
 # TODO: test
 def load_solution(params, filename, solver):

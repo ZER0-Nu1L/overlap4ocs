@@ -3,6 +3,7 @@ from utils.scheduler_analysis import extract_results, plot_schedule
 from paradigm.baseline import compute_baseline_schedule
 from paradigm.one_shot import compute_oneshot_schedule
 from paradigm.ideal import compute_ideal_time
+from paradigm.warm_start import build_baseline_warm_start
 import logging as log
 import argparse
 import toml
@@ -22,12 +23,13 @@ def load_program_config(config_path='config/program.toml'):
             "show": False
         }
 
-def write_metrics(metrics_path, payload):
+def write_metrics(metrics_path: str, payload: dict):
     directory = os.path.dirname(metrics_path)
     if directory:
         os.makedirs(directory, exist_ok=True)
     with open(metrics_path, 'w') as metrics_file:
         json.dump(payload, metrics_file, indent=2)
+
 
 def main():
     # Parse command-line arguments
@@ -47,8 +49,22 @@ def main():
     # Get parameter
     params = get_parameters(args.config)
 
-    # Ensure output directories exist
+    solver_gap = params.get('solver_gap')
+    solver_time_limit = params.get('solver_time_limit')
+    gap_str = f"{solver_gap:g}" if solver_gap is not None else "default"
+    limit_str = f"{solver_time_limit}s" if solver_time_limit else "default"
+    log.info(f"Solver options -> gap: {gap_str}, time_limit: {limit_str}")
+
+    # Baseline schedule (used for warm start + reporting)
+    cct_baseline, schedule_baseline = compute_baseline_schedule(params)
+    warm_start_payload = build_baseline_warm_start(schedule_baseline, params, cct_baseline)
+    warm_start_applied = True
+    # NOTE: The baseline solution applied to warm start did not prove effective.
+    # TODO: greedy policy for warm start
+    
+    # Build the model
     os.makedirs('figures', exist_ok=True)
+
     os.makedirs('solution', exist_ok=True)
     
     # .sol or .json
@@ -71,7 +87,26 @@ def main():
 
     # Build the model
     model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end = build_model(params)
-    model = solve_model(model, solver)
+
+    model, warm_start_applied = solve_model(
+        model,
+        solver,
+        warm_start_payload=warm_start_payload,
+        warm_start_variables={
+            'cct': cct,
+            'd': d,
+            't_start': t_start,
+            't_end': t_end,
+            'u': u,
+            'r': r,
+            't_reconf_start': t_reconf_start,
+            't_reconf_end': t_reconf_end,
+            't_step_end': t_step_end,
+        },
+        warm_start_label=f"Applied baseline warm start (CCT={cct_baseline * 1000:.0f} μs)",
+        solver_gap=solver_gap,
+        solver_time_limit=solver_time_limit,
+    )
 
     # Extract and display results
     schedule = extract_results(model, cct=cct, d=d, t_start=t_start, t_end=t_end, 
@@ -82,7 +117,6 @@ def main():
     write_model(model, solution_file, solver)
 
     # [Paradigm] Baseline (naive intra-collective reconfiguration)
-    cct_baseline, schedule_baseline = compute_baseline_schedule(params)
     plot_schedule(schedule_baseline, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=baseline_figure, show=show)
     write_model(model, baseline_file, solver)
 
@@ -123,7 +157,12 @@ def main():
     debug_solution_file      =  f"solution/debug_solution_k={params['k']}_p={params['p']}.json"
     if debug_mode == 1:
         model_debug, cct_debug, d_debug, t_start_debug, t_end_debug, u_debug, r_debug, t_reconf_start_debug, t_reconf_end_debug, t_step_end_debug = build_model(params, debug_model=True)
-        model_debug = solve_model(model_debug, solver)
+        model_debug, _ = solve_model(
+            model_debug,
+            solver,
+            solver_gap=solver_gap,
+            solver_time_limit=solver_time_limit,
+        )
         schedule_debug = extract_results(model_debug, cct=cct_debug, d=d_debug, t_start=t_start_debug, t_end=t_end_debug, 
                                 u=u_debug, r=r_debug, t_reconf_start=t_reconf_start_debug, 
                                 t_reconf_end=t_reconf_end_debug, t_step_end=t_step_end_debug, 
@@ -155,6 +194,7 @@ def main():
                 "solution": solution_figure,
                 "baseline": baseline_figure,
                 "oneshot": oneshot_figure if cct_oneshot is not None else None,
+                "warm_start_applied": warm_start_applied,
                 "debug": debug_solution_figure if debug_mode == 1 else None
             },
             "solutions": {
@@ -174,6 +214,10 @@ def main():
                 "over_oneshot": improvement_over_oneshot if cct_oneshot is not None else None
             },
             "params": params,
+            "solver_options": {
+                "gap": solver_gap,
+                "time_limit": solver_time_limit,
+            },
             "notes": {
                 "debug_mode": debug_mode
             }

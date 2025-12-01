@@ -41,11 +41,22 @@ def format_message_label(value: Decimal) -> str:
     return text.replace('.', '_')
 
 
-def to_instance(topology: dict, algorithm: str, message_mib: float, solver: str) -> dict:
+def to_instance(
+    topology: dict,
+    algorithm: str,
+    message_mib: float,
+    solver: str,
+    solver_gap: float | None = None,
+    solver_time_limit: float | None = None,
+) -> dict:
     message_value = parse_message_size(message_mib)
     instance = dict(topology)
     instance["algorithm"] = algorithm
     instance["solver"] = solver
+    if solver_gap is not None:
+        instance["solver_gap"] = solver_gap
+    if solver_time_limit is not None:
+        instance["solver_time_limit"] = solver_time_limit
     if message_value == message_value.to_integral():
         instance["m"] = int(message_value)
     else:
@@ -62,9 +73,19 @@ def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
     out_dir.mkdir(parents=True, exist_ok=True)
     entries = []
     solver = spec.get("solver", "pulp")
+    solver_opts = spec.get("solver_options", {})
+    solver_gap = spec.get("solver_gap", solver_opts.get("gap"))
+    solver_time_limit = spec.get("solver_time_limit", solver_opts.get("time_limit"))
     for algorithm in spec["algorithms"]:
         for msg in spec["message_sizes_mib"]:
-            instance = to_instance(spec["topology"], algorithm, msg, solver)
+            instance = to_instance(
+                spec["topology"],
+                algorithm,
+                msg,
+                solver,
+                solver_gap=solver_gap,
+                solver_time_limit=solver_time_limit,
+            )
             fname = config_filename(spec["matrix_id"], algorithm, msg)
             cfg_path = out_dir / fname
             if cfg_path.exists() and not overwrite:

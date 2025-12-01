@@ -1,5 +1,7 @@
 matrix_id = "k2_p16_sweep"
 solver = "pulp"
+solver_gap = 0.05
+solver_time_limit = 120
 program_config = "config/program.toml"
 message_sizes_mib = [2, 8, 32, 128, 512]  # in MB
 algorithms = ["ar_having-doubling", "a2a_pairwise", "a2a_bruck"]
@@ -12,5 +14,5 @@ T_reconf = 0.2
 T_lat = 0.02
 
 [output]
-config_dir  = "logs/generated_configs/ar_k2_p16_sweep"
-results_csv = "logs/matrix_results-ar_k2_p16_sweep.csv"
+config_dir  = "logs/generated_configs/k2_p16_sweep"
+results_csv = "logs/matrix_results-k2_p16_sweep.csv"

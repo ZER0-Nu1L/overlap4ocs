@@ -1,5 +1,7 @@
 # Solver configuration
 solver = "pulp" # 'gurobi', 'pulp', or 'copt'
+solver_gap = 0.05          # (Optional) Relative gap tolerance (e.g., 0.05 -> 5%)
+solver_time_limit = 120    # (Optional) Time limit in seconds (set to 0 or omit for unlimited)
 
 # Topology
 k = 2

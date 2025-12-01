@@ -163,7 +163,7 @@ def run_experiment(opts: argparse.Namespace, config_path: Path, extra_main_args:
     params = get_parameters(str(config_path))
     artifacts = expected_artifacts(params)
 
-    param_subset = {key: params.get(key) for key in ('k', 'T_reconf', 'T_lat', 'B', 'p', 'm')}
+    param_subset = {key: params.get(key) for key in ('k', 'T_reconf', 'T_lat', 'B', 'p', 'm', 'solver_gap', 'solver_time_limit')}
 
     metadata = {
         'run_id': run_id,
@@ -234,6 +234,7 @@ def main():
 
     header = [
         'timestamp', 'matrix_id', 'run_id', 'config_path', 'algorithm', 'message_mib', 'solver',
+        'solver_gap', 'solver_time_limit',
         'k', 'T_reconf', 'T_lat', 'B', 'p',
         'status', 'returncode', 'duration_seconds', 'optimized_cct', 'baseline_cct', 'oneshot_cct',
         'ideal_cct', 'improvement_over_baseline_pct', 'metrics_path', 'hash'
@@ -273,6 +274,8 @@ def main():
             'algorithm': entry.get('algorithm'),
             'message_mib': entry.get('message_mib'),
             'solver': entry.get('solver'),
+            'solver_gap': params.get('solver_gap'),
+            'solver_time_limit': params.get('solver_time_limit'),
             'k': params.get('k'),
             'T_reconf': params.get('T_reconf'),
             'T_lat': params.get('T_lat'),
