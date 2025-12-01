@@ -1,0 +1,24 @@
+matrix_id = "m32_sweep_p+k"
+solver = "pulp"
+solver_gap = 0.05
+solver_time_limit = 120
+program_config = "config/program.toml"
+
+message_sizes_mib = [32]  # in MB
+algorithms = ["ar_having-doubling", "a2a_pairwise", "a2a_bruck"]
+
+[topology]
+# Example topology sweep: list values will be expanded into combinations
+# k: number of OCS (can be a single value or list)
+k = [2, 4]
+# p: number of compute nodes (sweep over multiple values)
+p = [4, 8, 16, 32]
+# Bandwidth per link (bytes/ms)
+B = 50  # bytes/ms (50 GBps)
+# Sweep reconfiguration times (ms)
+T_reconf = [0.2, 2.0, 20.0]
+T_lat = 0.02
+
+[output]
+config_dir  = "logs/generated_configs/m32_sweep_p+k"
+results_csv = "logs/matrix_results-m32_sweep_p+k.csv"

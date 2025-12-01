@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import toml
+from itertools import product
 
 
 def load_matrix_spec(path: Path) -> dict:
@@ -64,9 +65,51 @@ def to_instance(
     return instance
 
 
-def config_filename(matrix_id: str, algorithm: str, message_mib: float) -> str:
+def expand_topologies(topology: dict) -> list[dict]:
+    """Expand topology dict where values may be scalars or lists into a list of topology dicts.
+
+    Example:
+      {"p": [4,8], "k": 2} -> [{"p":4,"k":2}, {"p":8,"k":2}]
+    """
+    keys = list(topology.keys())
+    values_list = []
+    for k in keys:
+        v = topology[k]
+        if isinstance(v, list) or isinstance(v, tuple):
+            values_list.append(list(v))
+        else:
+            values_list.append([v])
+
+    combos = []
+    for prod in product(*values_list):
+        combos.append({k: val for k, val in zip(keys, prod)})
+    return combos
+
+
+def _format_value_label(v) -> str:
+    # Produce a filename-safe representation for topology values
+    if isinstance(v, float):
+        if v.is_integer():
+            return str(int(v))
+        # replace decimal point with 'p' to avoid extra dots in filename
+        return str(v).replace('.', 'p')
+    if isinstance(v, int):
+        return str(v)
+    return str(v).replace(' ', '_')
+
+
+def format_topology_label(topo: dict) -> str:
+    parts = []
+    # sort keys for stable ordering
+    for k in sorted(topo.keys()):
+        parts.append(f"{k}={_format_value_label(topo[k])}")
+    return "__" + "_".join(parts) if parts else ""
+
+
+def config_filename(matrix_id: str, algorithm: str, message_mib: float, topo: dict | None = None) -> str:
     msg = format_message_label(parse_message_size(message_mib))
-    return f"{matrix_id}_{algorithm}_m{msg}.toml"
+    topo_label = format_topology_label(topo) if topo else ""
+    return f"{matrix_id}_{algorithm}{topo_label}_m{msg}.toml"
 
 
 def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
@@ -76,29 +119,35 @@ def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
     solver_opts = spec.get("solver_options", {})
     solver_gap = spec.get("solver_gap", solver_opts.get("gap"))
     solver_time_limit = spec.get("solver_time_limit", solver_opts.get("time_limit"))
-    for algorithm in spec["algorithms"]:
-        for msg in spec["message_sizes_mib"]:
-            instance = to_instance(
-                spec["topology"],
-                algorithm,
-                msg,
-                solver,
-                solver_gap=solver_gap,
-                solver_time_limit=solver_time_limit,
-            )
-            fname = config_filename(spec["matrix_id"], algorithm, msg)
-            cfg_path = out_dir / fname
-            if cfg_path.exists() and not overwrite:
-                raise FileExistsError(f"Config already exists: {cfg_path} (use --overwrite)")
-            with cfg_path.open('w') as f:
-                toml.dump(instance, f)
-            entries.append({
-                "config": str(cfg_path),
-                "algorithm": algorithm,
-                "message_mib": msg,
-                "solver": solver,
-                "hash": hashlib.sha1(json.dumps(instance, sort_keys=True).encode()).hexdigest()
-            })
+
+    # Support topology sweep: expand topology values that are lists into combinations
+    topology = spec["topology"]
+    topology_combos = expand_topologies(topology)
+
+    for topo in topology_combos:
+        for algorithm in spec["algorithms"]:
+            for msg in spec["message_sizes_mib"]:
+                instance = to_instance(
+                    topo,
+                    algorithm,
+                    msg,
+                    solver,
+                    solver_gap=solver_gap,
+                    solver_time_limit=solver_time_limit,
+                )
+                fname = config_filename(spec["matrix_id"], algorithm, msg, topo=topo)
+                cfg_path = out_dir / fname
+                if cfg_path.exists() and not overwrite:
+                    raise FileExistsError(f"Config already exists: {cfg_path} (use --overwrite)")
+                with cfg_path.open('w') as f:
+                    toml.dump(instance, f)
+                entries.append({
+                    "config": str(cfg_path),
+                    "algorithm": algorithm,
+                    "message_mib": msg,
+                    "solver": solver,
+                    "hash": hashlib.sha1(json.dumps(instance, sort_keys=True).encode()).hexdigest()
+                })
     index_path = out_dir / "index.json"
     with index_path.open('w') as f:
         json.dump(entries, f, indent=2)
