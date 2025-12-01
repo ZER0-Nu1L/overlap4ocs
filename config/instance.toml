@@ -4,7 +4,7 @@ solver_gap = 0.05          # (Optional) Relative gap tolerance (e.g., 0.05 -> 5%
 solver_time_limit = 120    # (Optional) Time limit in seconds (set to 0 or omit for unlimited)
 
 # Topology
-k = 2
+k = 4
 T_reconf = 0.2  # Reconfiguration time (ms)
 T_lat = 0.02 # End-to-end base latency (ms)
 B = 50  # 400 Gbps -> 50 GBps
@@ -12,7 +12,7 @@ B = 50  # 400 Gbps -> 50 GBps
 # B * k stands for the total bandwidth of a single node
 
 # CC params
-p = 8  # Number of compute nodes
+p = 1024  # Number of compute nodes
 m = 32  # Total message size (MB) | 32 * 1000 * 1000
 
 # NOTE: In order to directly calculate `m/B`, `m_i[i]/B`, and `d/B`, we fix the time unit as milliseconds(ms), convert the transmission unit to GBps, and set the message size as MB.

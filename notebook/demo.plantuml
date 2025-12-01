@@ -1,0 +1,37 @@
+@startgantt
+hide footbox
+title OCS Reconfiguration & Transmission
+
+' --------- OCS1 ---------
+[OCS1_Reconf1] requires 2 days
+[OCS1_Step1] requires 1 days
+[OCS1_Reconf2]  requires 2 days
+[OCS1_Step2] requires 1 days
+
+[OCS1_Step1] is colored in Lavender/LightBlue
+[OCS1_Step2] is colored in Lavender/LightBlue
+
+' --------- OCS2 ---------
+[OCS2_Reconf1]  requires 2 days
+[OCS2_Step1] requires 5 days
+[OCS2_Reconf2]  requires 2 days
+[OCS2_Step2] requires 1 days
+
+[OCS2_Step1] is colored in Lavender/LightBlue
+[OCS2_Step2] is colored in Lavender/LightBlue
+
+
+' ------ 依赖关系 ------
+' 同一 Section 内的顺序
+[OCS1_Reconf1]-> [OCS1_Step1]
+[OCS1_Step1] -> [OCS1_Reconf2]
+[OCS1_Reconf2] -> [OCS1_Step2]
+
+[OCS2_Reconf1] -> [OCS2_Step1]
+[OCS2_Step1] -> [OCS2_Reconf2]
+[OCS2_Reconf2] -> [OCS2_Step2]
+
+' 跨 Section 的阶段同步
+[OCS1_Step1] --> [OCS2_Step2]
+[OCS2_Step1] --> [OCS1_Step2]
+@endgantt

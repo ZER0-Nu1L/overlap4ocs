@@ -1,6 +1,6 @@
 # SWOT Scheduler — overlap4ocs
 
-> 由 GPT-5 提供。
+> 由 GPT-5 初步提供。
 
 ## 项目简介
 

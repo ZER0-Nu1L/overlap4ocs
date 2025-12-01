@@ -12,6 +12,7 @@ from typing import Dict, List
 
 import toml
 from itertools import product
+from decimal import Decimal
 
 
 def load_matrix_spec(path: Path) -> dict:
@@ -65,24 +66,56 @@ def to_instance(
     return instance
 
 
-def expand_topologies(topology: dict) -> list[dict]:
-    """Expand topology dict where values may be scalars or lists into a list of topology dicts.
+def expand_topologies(topology: dict) -> list:
+    """Expand topology definitions into a list of (name, topo) tuples.
 
-    Example:
-      {"p": [4,8], "k": 2} -> [{"p":4,"k":2}, {"p":8,"k":2}]
+    Supports two forms of `topology` in the matrix spec:
+    1. Mapping of scalar or list values, e.g.:
+         {"k": [2,4], "p": [4,8]}
+       -> Cartesian product of keys -> combos with name=None.
+
+    2. Mapping of subtables (explicit pairs), e.g.:
+         {"pair1": {"k":2, "B":50}, "pair2": {...}}
+       -> returns [("pair1", {...}), ("pair2", {...})]
+
+    Return value: list of (name_or_none, topo_dict).
     """
+    def _coerce_scalar(v):
+        # If value is a numeric-like string, convert to int or float.
+        if isinstance(v, str):
+            try:
+                return int(v)
+            except ValueError:
+                try:
+                    return float(v)
+                except ValueError:
+                    return v
+        return v
+
+    # Detect explicit subtable style: any value is a dict
+    if any(isinstance(v, dict) for v in topology.values()):
+        combos = []
+        for name, sub in topology.items():
+            if isinstance(sub, dict):
+                # coerce numeric-like strings inside subtable
+                coerced = {k: _coerce_scalar(val) for k, val in sub.items()}
+                combos.append((name, coerced))
+        return combos
+
+    # Otherwise, treat topology as mapping of scalars/lists and expand
     keys = list(topology.keys())
     values_list = []
     for k in keys:
         v = topology[k]
         if isinstance(v, list) or isinstance(v, tuple):
-            values_list.append(list(v))
+            # coerce elements in lists (in case they are numeric strings)
+            values_list.append([_coerce_scalar(el) for el in v])
         else:
-            values_list.append([v])
+            values_list.append([_coerce_scalar(v)])
 
     combos = []
     for prod in product(*values_list):
-        combos.append({k: val for k, val in zip(keys, prod)})
+        combos.append((None, {k: val for k, val in zip(keys, prod)}))
     return combos
 
 
@@ -106,10 +139,11 @@ def format_topology_label(topo: dict) -> str:
     return "__" + "_".join(parts) if parts else ""
 
 
-def config_filename(matrix_id: str, algorithm: str, message_mib: float, topo: dict | None = None) -> str:
+def config_filename(matrix_id: str, algorithm: str, message_mib: float, topo: dict | None = None, topo_name: str | None = None) -> str:
     msg = format_message_label(parse_message_size(message_mib))
     topo_label = format_topology_label(topo) if topo else ""
-    return f"{matrix_id}_{algorithm}{topo_label}_m{msg}.toml"
+    name_label = f"_{topo_name}" if topo_name else ""
+    return f"{matrix_id}_{algorithm}{name_label}{topo_label}_m{msg}.toml"
 
 
 def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
@@ -124,7 +158,7 @@ def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
     topology = spec["topology"]
     topology_combos = expand_topologies(topology)
 
-    for topo in topology_combos:
+    for topo_name, topo in topology_combos:
         for algorithm in spec["algorithms"]:
             for msg in spec["message_sizes_mib"]:
                 instance = to_instance(
@@ -135,7 +169,7 @@ def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
                     solver_gap=solver_gap,
                     solver_time_limit=solver_time_limit,
                 )
-                fname = config_filename(spec["matrix_id"], algorithm, msg, topo=topo)
+                fname = config_filename(spec["matrix_id"], algorithm, msg, topo=topo, topo_name=topo_name)
                 cfg_path = out_dir / fname
                 if cfg_path.exists() and not overwrite:
                     raise FileExistsError(f"Config already exists: {cfg_path} (use --overwrite)")

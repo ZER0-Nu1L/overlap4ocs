@@ -1,0 +1,19 @@
+matrix_id = "k4_p16_sweep_msg-stride4"
+solver = "pulp"
+solver_gap = 0.05
+solver_time_limit = 120
+
+program_config = "config/program.toml"
+message_sizes_mib = [0.03125, 0.125, 0.5, 2.0, 8.0, 32.0, 128.0, 512.0]  # in MB
+algorithms = ["ar_having-doubling", "a2a_pairwise", "a2a_bruck"]
+
+[topology]
+k = 4
+p = 16
+B = 25  # bytes/ms (50 GBps)
+T_reconf = 0.2
+T_lat = 0.02
+
+[output]
+config_dir  = "logs/generated_configs/k4_p16_sweep_msg-stride4"
+results_csv = "logs/matrix_results-k4_p16_sweep_msg-stride4.csv"

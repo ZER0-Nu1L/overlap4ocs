@@ -6,6 +6,7 @@ figures/
 solution/
 test/
 logs/
+archives/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
