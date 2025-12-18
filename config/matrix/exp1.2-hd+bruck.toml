@@ -1,0 +1,22 @@
+matrix_id = "exp1.2-hd+bruck"
+
+solver = "pulp"
+solver_gap = 0.05
+solver_time_limit = 120
+program_config = "config/program.toml"
+
+message_sizes_mib = [32]  # in MB
+algorithms = ["ar_having-doubling", "a2a_bruck"]
+
+[topology]
+p = [4, 8, 16, 32, 64, 128, 256, 512, 1024]
+
+k = 4
+B = 25
+
+T_reconf = 0.2
+T_lat = 0.02
+
+[output]
+config_dir  = "logs/generated_configs/exp1.2-hd+bruck"
+results_csv = "logs/matrix_results-exp1.2-hd+bruck.csv"

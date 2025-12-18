@@ -7,17 +7,19 @@ import gurobipy
 import pulp
 from pulp import COPT
 
+from config.cc_algorithm import compute_algorithm_params
+
 def get_parameters(config_file = 'config/instance.toml'):
     # Default parameters
     params = {
-        'solver': 'gurobi',                 # Optimization solver: 'gurobi', 'pulp', or 'copt'
+        'solver': 'pulp',                 # Optimization solver: 'gurobi', 'pulp', 'pulp_gurobi', or 'copt'
         'k': 2,                             # Number of OCS
         'B': 400 * 1024 * 1024 / 8,     # Bandwidth per OCS (bytes/ms)
         'T_reconf': 0.2,                      # Reconfiguration time (ms)
         'T_lat': 0.02,                      # End-to-end base latency (ms)
         'p': 16,                            # Number of compute nodes
         'm': 32 * 1024 * 1024,              # Total message size (bytes)
-        'algorithm': 'ar_having-doubling',  # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck'
+        'algorithm': 'ar_having-doubling',  # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck', ... check in cc_algorithm.py
         'solver_gap': None,                 # Relative MIP gap tolerance (None -> solver default)
         'solver_time_limit': None,          # Time limit in seconds (None -> solver default)
     }
@@ -39,15 +41,7 @@ def get_parameters(config_file = 'config/instance.toml'):
     validate_parameters(params)
 
     # Algorithm-specific parameter calculation
-    algorithm = params['algorithm']
-    if algorithm == 'a2a_bruck':
-        params.update(compute_a2a_bruck_params(params['p'], params['m']))
-    elif algorithm == 'a2a_pairwise':
-        params.update(compute_a2a_pairwise_params(params['p'], params['m']))
-    elif algorithm == 'ar_having-doubling':
-        params.update(compute_having_doubling_params(params['p'], params['m']))
-    else:
-        raise ValueError(f"Unsupported algorithm: {algorithm}")
+    params.update(compute_algorithm_params(params['algorithm'], params['p'], params['m']))
 
     log.info(params)
     return params
@@ -65,6 +59,14 @@ def validate_parameters(params):
             log.info("PuLP solver is available")
         except ImportError:
             raise ValueError("PuLP solver specified but pulp cannot be imported")
+    elif solver == 'pulp_gurobi':
+        try:
+            # Ensure PuLP exposes the GUROBI_CMD interface before runtime
+            if not hasattr(pulp, 'GUROBI_CMD'):
+                raise ImportError("PuLP installation lacks GUROBI_CMD interface")
+            log.info("PuLP (Gurobi backend) solver is available")
+        except ImportError as exc:
+            raise ValueError("pulp_gurobi solver specified but PuLP Gurobi bindings are unavailable") from exc
     elif solver == 'copt':
         try:
             log.info("COPT solver is available")
@@ -79,12 +81,6 @@ def validate_parameters(params):
         if not isinstance(value, (int, float)) or value <= 0:
             raise ValueError(f"Parameter {param_name} must be a positive number")
     
-    # Validate algorithm
-    algorithm = params.get('algorithm')
-    valid_algorithms = ['ar_having-doubling', 'a2a_pairwise', 'a2a_bruck']
-    if algorithm not in valid_algorithms:
-        raise ValueError(f"Algorithm must be one of {valid_algorithms}")
-
     solver_gap = params.get('solver_gap')
     if solver_gap is not None and solver_gap < 0:
         raise ValueError("solver_gap must be non-negative when provided")
@@ -92,80 +88,3 @@ def validate_parameters(params):
     solver_time_limit = params.get('solver_time_limit')
     if solver_time_limit is not None and solver_time_limit < 0:
         raise ValueError("solver_time_limit must be non-negative when provided")
-
-## Having Doubling（Rabenseifner's Algorithm）
-def compute_having_doubling_params(p, m):
-    p_new = 2 ** ((p).bit_length() - 1)  # NOTE: p_new is a power of 2 less than or equal to p
-    s = (p_new - 1).bit_length()         # NOTE: (p - 1).bit_length() <=> ceil(log2(p))
-    
-    num_steps = 2 * s
-    return {
-        'p': p_new, # FIXME: For now.
-        's': s,
-        'num_steps': num_steps,
-        'm_i': compute_hd_message_sizes(m, s, num_steps),
-        'configurations': compute_hd_configurations(s, num_steps)
-    }
-
-def compute_hd_message_sizes(m, s, num_steps):
-    m_i = {}
-    for i in range(1, num_steps + 1):
-        if i <= s:
-            m_i[i] = m / (2 ** i)
-        else:
-            m_i[i] = m_i[2 * s + 1 - i]
-    return m_i
-
-def compute_hd_configurations(s, num_steps):
-    configurations = {}
-    for i in range(1, num_steps + 1):
-        configurations[i] = min(i, 2 * s - i + 1)
-    return configurations
-
-## All-to-all（Pairwise Exchange）
-def compute_a2a_pairwise_params(p, m):
-    num_steps = p - 1
-    return {
-        'p': p, # FIXME: For now.
-        'num_steps': num_steps,
-        'm_i': compute_a2a_pairwise_message_sizes(m, num_steps),
-        'configurations': compute_a2a_pairwise_configurations(num_steps)
-    }
-
-def compute_a2a_pairwise_message_sizes(m, num_steps):
-    m_i = {}
-    for i in range(1, num_steps + 1):
-        m_i[i] = m / num_steps
-    return m_i    
-
-def compute_a2a_pairwise_configurations(num_steps):
-    configurations = {}
-    for i in range(1, num_steps + 1):
-        configurations[i] = i
-    return configurations
-
-## All-to-all（Bruck）
-def compute_a2a_bruck_params(p, m):
-    p_new = 2 ** ((p).bit_length() - 1)  # NOTE: p_new is a power of 2 less than or equal to p
-    s = (p_new - 1).bit_length()         # NOTE: (p - 1).bit_length() 即 ceil(log2(p))
-    
-    num_steps = s
-    return {
-        'p': p_new, # FIXME: For now.
-        's': s,
-        'num_steps': num_steps,
-        'm_i': compute_a2a_bruck_message_sizes(m, num_steps),
-        'configurations': compute_a2a_bruck_configurations(num_steps)
-    }
-
-def compute_a2a_bruck_message_sizes(m, num_steps):
-    m_i = {}
-    for i in range(1, num_steps + 1):
-        m_i[i] = m
-    return m_i    
-
-def compute_a2a_bruck_configurations(num_steps):
-    configurations = {}
-    for i in range(1, num_steps + 1):
-        configurations[i] = i
-    return configurations

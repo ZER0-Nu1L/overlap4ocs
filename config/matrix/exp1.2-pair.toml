@@ -1,0 +1,22 @@
+matrix_id = "exp1.2-pair"
+
+solver = "pulp"
+solver_gap = 0.05
+solver_time_limit = 180
+program_config = "config/program.toml"
+
+message_sizes_mib = [32]  # in MB
+algorithms = ["a2a_pairwise"]
+
+[topology]
+p = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+
+k = 4
+B = 25
+
+T_reconf = 0.2
+T_lat = 0.02
+
+[output]
+config_dir  = "logs/generated_configs/exp1.2-pair"
+results_csv = "logs/matrix_results-exp1.2-pair.csv"
