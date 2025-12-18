@@ -40,42 +40,64 @@ def main():
     parser.add_argument('--metrics-file', type=str, default=None, help='If provided, write aggregated results to this JSON file.')
     args = parser.parse_args()
 
+    # Get parameter
+    params = get_parameters(args.config)
     # Load program configuration
     program_config = load_program_config(args.program_config)
     show = program_config.get("show", False)
     save_as_pdf = program_config.get("save_as_pdf", True)
     debug_mode = program_config.get("debug_mode", 0)
 
-    # Get parameter
-    params = get_parameters(args.config)
-
-    solver_gap = params.get('solver_gap')
-    solver_time_limit = params.get('solver_time_limit')
-    gap_str = f"{solver_gap:g}" if solver_gap is not None else "default"
-    limit_str = f"{solver_time_limit}s" if solver_time_limit else "default"
-    log.info(f"Solver options -> gap: {gap_str}, time_limit: {limit_str}")
-
-    # Baseline schedule (used for warm start + reporting)
-    cct_baseline, schedule_baseline = compute_baseline_schedule(params)
-    warm_start_payload = build_baseline_warm_start(schedule_baseline, params, cct_baseline)
-    warm_start_applied = True
-    # NOTE: The baseline solution applied to warm start did not prove effective.
-    # TODO: greedy policy for warm start
-    
-    # Build the model
-    os.makedirs('figures', exist_ok=True)
-
-    os.makedirs('solution', exist_ok=True)
-    
     # .sol or .json
+    os.makedirs('figures', exist_ok=True)
+    os.makedirs('solution', exist_ok=True)
+
     solution_figure   =  f"figures/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
     solution_file    =  f"solution/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.json"
     baseline_figure   =  f"figures/baseline_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.pdf"
     baseline_file    =  f"solution/baseline_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.json"
     oneshot_figure    =  f"figures/oneshot_{params['algorithm']}_t_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
     oneshot_file     =  f"solution/oneshot_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.json"
-    
+
+
+    # [Paradigm] Baseline (naive intra-collective reconfiguration)
+    cct_baseline, schedule_baseline = compute_baseline_schedule(params)
+    plot_schedule(schedule_baseline, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=baseline_figure, show=show)
+
+    # [Paradigm] One-shot
+    cct_oneshot, schedule_oneshot = compute_oneshot_schedule(params)
+    if cct_oneshot is not None:
+        plot_schedule(schedule_oneshot, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=oneshot_figure, show=show)
+
+
+    # [Paradigm] Ideal
+    cct_ideal = compute_ideal_time(params)
+
     # [Paradigm] Solver
+    solver_gap = params.get('solver_gap')
+    solver_time_limit = params.get('solver_time_limit')
+    gap_str = f"{solver_gap:g}" if solver_gap is not None else "default"
+    limit_str = f"{solver_time_limit}s" if solver_time_limit else "default"
+    log.info(f"Solver options -> gap: {gap_str}, time_limit: {limit_str}")
+
+    warm_start_applied = False
+    warm_start_choice = "baseline"
+    warm_start_cct = cct_baseline
+    warm_start_schedule = schedule_baseline
+    if cct_oneshot is not None and schedule_oneshot:
+        if warm_start_cct is None or cct_oneshot < warm_start_cct:
+            warm_start_choice = "one-shot"
+            warm_start_cct = cct_oneshot
+            warm_start_schedule = schedule_oneshot
+
+    warm_start_payload = None
+    warm_start_label = None
+    if warm_start_schedule and warm_start_cct is not None:
+        warm_start_payload = build_baseline_warm_start(warm_start_schedule, params, warm_start_cct)
+        if warm_start_payload:
+            warm_start_label = f"Applied {warm_start_choice} warm start (CCT={warm_start_cct * 1000:.0f} μs)"
+
+
     solver = params['solver']
     if solver == 'gurobi':
         from paradigm.model_gurobi import build_model
@@ -103,7 +125,7 @@ def main():
             't_reconf_end': t_reconf_end,
             't_step_end': t_step_end,
         },
-        warm_start_label=f"Applied baseline warm start (CCT={cct_baseline * 1000:.0f} μs)",
+        warm_start_label=warm_start_label,
         solver_gap=solver_gap,
         solver_time_limit=solver_time_limit,
     )
@@ -113,44 +135,52 @@ def main():
                              u=u, r=r, t_reconf_start=t_reconf_start, 
                              t_reconf_end=t_reconf_end, t_step_end=t_step_end, 
                              params=params)
+
+    warm_start_cct_adj = None
+    if warm_start_cct is not None:
+        warm_start_cct_adj = warm_start_cct - params['T_reconf']
+
+    fallback_used = False
+    cct_optimized = get_solution_value(cct) - params['T_reconf']
+    if warm_start_cct_adj is not None and cct_optimized > warm_start_cct_adj + 1e-9:
+        log.warning("Final solution worse than warm start (%.6g > %.6g); falling back to warm-start schedule",
+                    cct_optimized, warm_start_cct_adj)
+        schedule = warm_start_schedule
+        cct_optimized = warm_start_cct_adj
+        fallback_used = True
+
     plot_schedule(schedule, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=solution_figure, show=show)
-    write_model(model, solution_file, solver)
 
-    # [Paradigm] Baseline (naive intra-collective reconfiguration)
-    plot_schedule(schedule_baseline, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=baseline_figure, show=show)
-    write_model(model, baseline_file, solver)
+    if fallback_used:
+        with open(solution_file, 'w') as sol_fp:
+            json.dump(schedule, sol_fp, indent=2)
+    else:
+        write_model(model, solution_file, solver)
 
-    # [Paradigm] One-shot
-    cct_oneshot, schedule_oneshot = compute_oneshot_schedule(params)
-    if cct_oneshot is not None:
-        plot_schedule(schedule_oneshot, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=oneshot_figure, show=show)
-        write_model(model, oneshot_file, solver)
+    with open(baseline_file, 'w') as baseline_fp:
+        json.dump(schedule_baseline, baseline_fp, indent=2)
+    if cct_oneshot is not None and schedule_oneshot:
+        with open(oneshot_file, 'w') as oneshot_fp:
+            json.dump(schedule_oneshot, oneshot_fp, indent=2)
 
-    # [Paradigm] Ideal
-    cct_ideal = compute_ideal_time(params)
 
     # Compare and analyze the results
-    cct_optimized = get_solution_value(cct) - params['T_reconf']
     cct_baseline_adj = cct_baseline - params['T_reconf']
     log.info("\nComparison:")
     cct_oneshot_adj = None
     improvement_over_oneshot = None
+    improvement_over_baseline = ((cct_baseline_adj - cct_optimized) / cct_baseline_adj) * 100 if cct_baseline_adj != 0 else 0
     if cct_oneshot is not None:
         cct_oneshot_adj = cct_oneshot - params['T_reconf']
         log.info(f"One-shot CCT: {cct_oneshot_adj * 1000:.0f} μs")
+        improvement_over_oneshot = ((cct_oneshot_adj - cct_optimized) / cct_oneshot_adj) * 100 if cct_oneshot_adj != 0 else 0
+        log.info(f"Improvement over one-shot: {improvement_over_oneshot:.0f}%")
     else:
         log.info("One-shot CCT: None")
         log.info("One-shot schedule is not feasible for current parameters")
     log.info(f"Baseline CCT:  {cct_baseline_adj * 1000:.0f} μs")
     log.info(f"Optimized CCT: {cct_optimized * 1000:.0f} μs")
-    log.info(f"Ideal CCT:     {cct_ideal * 1000:.0f} μs")
-    
-    improvement_over_baseline = ((cct_baseline_adj - cct_optimized) / cct_baseline_adj) * 100 if cct_baseline_adj != 0 else 0
     log.info(f"Improvement over baseline: {improvement_over_baseline:.0f}%")
-    
-    if cct_oneshot is not None:
-        improvement_over_oneshot = ((cct_oneshot_adj - cct_optimized) / cct_oneshot_adj) * 100 if cct_oneshot_adj != 0 else 0
-        log.info(f"Improvement over one-shot: {improvement_over_oneshot:.0f}%")
     
     # DEBUG: debug_mode
     debug_solution_figure    =  f"figures/debug_solution_k={params['k']}_p={params['p']}.pdf"
@@ -195,6 +225,9 @@ def main():
                 "baseline": baseline_figure,
                 "oneshot": oneshot_figure if cct_oneshot is not None else None,
                 "warm_start_applied": warm_start_applied,
+                "warm_start_source": warm_start_choice,
+                "warm_start_cct": warm_start_cct,
+                "warm_start_fallback_used": fallback_used,
                 "debug": debug_solution_figure if debug_mode == 1 else None
             },
             "solutions": {

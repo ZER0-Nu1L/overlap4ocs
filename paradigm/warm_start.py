@@ -47,7 +47,10 @@ def apply_warm_start(solver_name: str, variables: dict[str, Any], warm: Dict[str
         if var_obj is None:
             return
         if solver_name == 'gurobi':
-            var_obj.start = value
+            try:
+                var_obj.Start = value
+            except AttributeError:
+                var_obj.setAttr('Start', value)
         else:
             setter = getattr(var_obj, 'setInitialValue', None)
             if callable(setter):

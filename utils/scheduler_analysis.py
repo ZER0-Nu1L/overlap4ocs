@@ -49,7 +49,7 @@ def extract_results(source, **kwargs):
         if solver == 'gurobi':
             from gurobipy import GRB
             optimal = (model.status == GRB.OPTIMAL)
-        elif params['solver'] == 'pulp' or params['solver'] == 'copt':
+        elif params['solver'] == 'pulp' or params['solver'] == 'copt' or params['solver'] == 'pulp_gurobi':
             import pulp
             status_str = pulp.LpStatus[model.status]
             print("Pulp solver status:", status_str)

@@ -57,8 +57,8 @@ def compute_oneshot_schedule(params):
         t_trans_end = t_trans_start + trans_time
         
         # OCS range allocated for the current configuration
-        start_ocs = (current_config - 1) * d + 1
-        end_ocs = min(current_config * d, k) + 1
+        start_ocs = int((current_config - 1) * d + 1)
+        end_ocs = min(int(current_config * d), k) + 1
         
         # Create a schedule for each allocated OCS
         for j in range(start_ocs, end_ocs):

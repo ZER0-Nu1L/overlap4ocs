@@ -19,7 +19,7 @@ def write_model(model, filename, solver):
     """
     if solver == 'gurobi':
         model.write(filename)
-    elif solver == 'pulp' or solver == 'copt':
+    elif solver in ('pulp', 'copt', 'pulp_gurobi'):
         solution = {}
         for var in model.variables():
             solution[var.name] = var.varValue
@@ -38,18 +38,54 @@ def solve_model(
     solver_time_limit: float | None = None,
 ):
     """Solve the model and optionally apply a warm start before optimization."""
-    warm_start_applied = False
+    warm_start_applied = True # NOTE: 🚧🚧🚧
     if warm_start_payload and warm_start_variables:
         warm_start_applied = apply_warm_start(solver, warm_start_variables, warm_start_payload)
         if warm_start_applied and warm_start_label:
             log.info(warm_start_label)
 
     if solver == 'gurobi':
+        from gurobipy import GRB
         if solver_gap is not None:
             model.setParam('MIPGap', float(solver_gap))
         if solver_time_limit and solver_time_limit > 0:
             model.setParam('TimeLimit', float(solver_time_limit))
+
+        if warm_start_applied:
+            try:
+                # Check if warm start is feasible via relaxation; >0 objective means violations present
+                relax = model.feasRelaxS(0, False, False, True)
+                relax.optimize()
+                if relax.Status == GRB.OPTIMAL and relax.ObjVal > 1e-6:
+                    log.warning("Warm start appears infeasible; relaxation objective=%.6g", relax.ObjVal)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Warm start feasibility check skipped (error: %s)", exc)
         model.optimize()
+        status = model.status
+        if status == GRB.TIME_LIMIT:
+            if model.SolCount > 0:
+                incumbent = getattr(model, 'ObjVal', None)
+                log.warning(
+                    "Gurobi hit TimeLimit but has %d incumbent solution(s); best objective=%s",
+                    model.SolCount,
+                    incumbent,
+                )
+            else:
+                raise RuntimeError("Gurobi reached TimeLimit without a feasible solution")
+        elif status == GRB.INFEASIBLE:
+            raise RuntimeError("Gurobi reported model as infeasible")
+        elif status == GRB.UNBOUNDED:
+            raise RuntimeError("Gurobi reported model as unbounded")
+        elif status == GRB.INF_OR_UNBD:
+            raise RuntimeError("Gurobi reported model as infeasible or unbounded")
+        elif status not in (GRB.OPTIMAL, GRB.SUBOPTIMAL):
+            if model.SolCount > 0:
+                log.warning(
+                    "Gurobi ended with status %s but has incumbent solution; proceeding with incumbent",
+                    status,
+                )
+            else:
+                raise RuntimeError(f"Gurobi terminated with status {status} and no solution")
     elif solver == 'pulp':
         import pulp
         import multiprocessing
@@ -72,6 +108,32 @@ def solve_model(
             solver = pulp.PULP_CBC_CMD(**solver_kwargs)
 
         model.solve(solver)        
+    elif solver == 'pulp_gurobi':
+        import pulp
+        import multiprocessing
+
+        num_threads = multiprocessing.cpu_count()
+        solver_kwargs = {
+            'msg': True,
+            'warmStart': bool(warm_start_applied),
+        }
+        if solver_time_limit and solver_time_limit > 0:
+            solver_kwargs['timeLimit'] = float(solver_time_limit)
+
+        gurobi_options = []
+        if solver_gap is not None:
+            gurobi_options.append(('MIPGap', float(solver_gap)))
+        if num_threads:
+            gurobi_options.append(('Threads', num_threads))
+        if gurobi_options:
+            solver_kwargs['options'] = gurobi_options
+
+        gurobi_cmd_path = os.environ.get('GUROBI_CMD_PATH')
+        if gurobi_cmd_path:
+            solver_kwargs['path'] = gurobi_cmd_path
+
+        solver = pulp.GUROBI_CMD(**solver_kwargs)
+        model.solve(solver)
     elif solver == 'copt':
         from pulp import COPT
         solver = COPT()
