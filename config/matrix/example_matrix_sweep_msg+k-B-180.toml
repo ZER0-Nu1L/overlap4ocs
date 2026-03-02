@@ -1,0 +1,21 @@
+matrix_id = "m32_sweep_msg+k-B"
+
+solver = "pulp"
+solver_gap = 0.05
+solver_time_limit = 180
+program_config = "config/program.toml"
+
+message_sizes_mib = [0.125, 0.5, 2.0, 8.0, 32.0, 128.0, 512.0]  # in MB
+algorithms = ["ar_having-doubling", "a2a_bruck"]
+
+[topology]
+p = 256
+k = "8"
+B = "12.5"
+
+T_reconf = 0.2
+T_lat = 0.02
+
+[output]
+config_dir  = "logs/generated_configs/m32_sweep_msg+k-B"
+results_csv = "logs/matrix_results-m32_sweep_msg+k-B.csv"
