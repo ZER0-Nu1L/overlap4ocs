@@ -7,6 +7,8 @@ solution/
 test/
 logs/
 archives/
+.claude/
+public/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
