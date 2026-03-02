@@ -1,0 +1,33 @@
+[project]
+name = "overlap4ocs"
+version = "0.0.0"
+description = "SWOT Scheduler — overlap4ocs"
+readme = "README.md"
+requires-python = ">=3.10"
+
+# Base runtime deps for running main.py + scripts/*.py with open-source solver path.
+dependencies = [
+  "matplotlib==3.10.1",
+  "networkx==3.4.2",
+  "pulp==3.3.0",
+  "pyvis==0.3.2",
+  "toml==0.10.2",
+]
+
+[project.optional-dependencies]
+# Optional commercial solver support.
+gurobi = [
+  "gurobipy==12.0.1",
+]
+
+# Notebook + analysis convenience deps (for notebook/*.ipynb and scripts/*.ipynb).
+notebook = [
+  "ipykernel",
+  "jupyter",
+  "numpy",
+  "pandas",
+]
+
+[tool.uv]
+# Keep the virtualenv in-repo for easy VS Code interpreter discovery.
+managed = true

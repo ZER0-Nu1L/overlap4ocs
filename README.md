@@ -38,15 +38,53 @@
 
 
 ## 快速上手
-1. 安装依赖：
+### 使用 uv（推荐，可复现）
+
+1. 安装 uv（macOS 示例）：
+
   ```bash
-  pip install -r requirements.txt
+  brew install uv
+  # 或者使用官方安装脚本/其他包管理器
   ```
 
-2. 运行默认实例：
+2. 创建并同步虚拟环境（默认在仓库内生成 `.venv/`）：
+
   ```bash
-  python3 main.py --config config/instance.toml
+  uv sync
   ```
+
+  - 若需要使用 Gurobi 求解器（可选）：
+
+    ```bash
+    uv sync --extra gurobi
+    ```
+
+  - 若需要运行 notebook（可选，包含 numpy/pandas/jupyter/ipykernel）：
+
+    ```bash
+    uv sync --extra notebook
+    ```
+
+3. 运行默认实例：
+
+  ```bash
+  uv run python main.py --config config/instance.toml
+  ```
+
+4. 运行 `scripts/*.py`（有些脚本依赖仓库内模块导入，建议加上 `PYTHONPATH=.`）：
+
+  ```bash
+  PYTHONPATH=. uv run python scripts/<script>.py --help
+  ```
+
+### 使用 pip（兼容方式）
+
+如果你不想用 uv，也可以继续使用：
+
+```bash
+pip install -r requirements.txt
+python3 main.py --config config/instance.toml
+```
 
 - 若需要记录一次性运行的指标，可附加 `--metrics-file logs/runs/demo_run_metrics.json --run-id demo-run`（路径可自定义）。
 
@@ -76,7 +114,7 @@
 - **运行配置生成器**：
   
   ```bash
-  PYTHONPATH=. python scripts/generate_matrix_configs.py --matrix config/matrix/example_matrix.toml
+  PYTHONPATH=. uv run python scripts/generate_matrix_configs.py --matrix config/matrix/example_matrix.toml
   ```
   
   会把所有组合写入 `logs/generated_configs/<matrix_id>/`，并生成 `index.json` 记录哈希，方便后续 resume。
@@ -84,7 +122,7 @@
 - **启动批量求解实验**：
 
   ```bash
-  PYTHONPATH=. python scripts/matrix_runner.py --matrix config/matrix/example_matrix.toml
+  PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix config/matrix/example_matrix.toml
   ```
 
   - 运行器会对未完成的配置逐一求解，并为每次实验创建 `logs/runs/<run-id>/` 目录（包含 `config/`、`figures/`、`solution/`、`run.log`、`metrics.json`、`metadata.json`）。可用 `--limit`, `--rerun-failed`, `--extra-args` 等参数细分批次、透传额外选项。
@@ -96,8 +134,33 @@
 - 需要释放空间时，可使用：
 
   ```bash
-  python scripts/matrix_archive.py --matrix-id <name> [--cleanup]
+  uv run python scripts/matrix_archive.py --matrix-id <name> [--cleanup]
   ```
+
+## Notebook（Jupyter / VS Code）
+
+本仓库包含：
+
+- `notebook/*.ipynb`
+- `scripts/*.ipynb`
+
+建议用 uv 安装 notebook 依赖：
+
+```bash
+uv sync --extra notebook
+```
+
+### 在 VS Code 中使用 Jupyter
+
+1. 先完成 `uv sync`（以及需要的话 `uv sync --extra notebook`）。
+2. 打开 VS Code 命令面板，选择 **Python: Select Interpreter**，选中仓库内的解释器：`.venv/bin/python`。
+3. 打开任意 `.ipynb` 文件，在右上角选择 Kernel，选择与 `.venv` 对应的 Python 环境。
+
+如果 VS Code 没有自动识别内核，可执行一次：
+
+```bash
+uv run python -m ipykernel install --user --name overlap4ocs --display-name "overlap4ocs (.venv)"
+```
 
   将指定矩阵的 run 目录与配置拷贝至 `logs/archive/` 并（可选）从生产目录及 `logs/matrix_results.csv` 中移除，实现“归档 + 按矩阵清理”。
 

@@ -3,10 +3,6 @@ import logging as log
 import toml
 import os
 
-import gurobipy
-import pulp
-from pulp import COPT
-
 from config.cc_algorithm import compute_algorithm_params
 
 def get_parameters(config_file = 'config/instance.toml'):
@@ -51,17 +47,20 @@ def validate_parameters(params):
     solver = params.get('solver')
     if solver == 'gurobi':
         try:
+            import gurobipy  # noqa: F401
             log.info("Gurobi solver is available")
         except ImportError:
             raise ValueError("Gurobi solver specified but gurobipy cannot be imported")
     elif solver == 'pulp':
         try:
+            import pulp  # noqa: F401
             log.info("PuLP solver is available")
         except ImportError:
             raise ValueError("PuLP solver specified but pulp cannot be imported")
     elif solver == 'pulp_gurobi':
         try:
             # Ensure PuLP exposes the GUROBI_CMD interface before runtime
+            import pulp
             if not hasattr(pulp, 'GUROBI_CMD'):
                 raise ImportError("PuLP installation lacks GUROBI_CMD interface")
             log.info("PuLP (Gurobi backend) solver is available")
@@ -69,6 +68,7 @@ def validate_parameters(params):
             raise ValueError("pulp_gurobi solver specified but PuLP Gurobi bindings are unavailable") from exc
     elif solver == 'copt':
         try:
+            from pulp import COPT  # noqa: F401
             log.info("COPT solver is available")
         except ImportError:
             raise ValueError("COPT solver specified but COPT cannot be imported from pulp")

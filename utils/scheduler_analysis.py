@@ -1,5 +1,4 @@
 # optimizer.py
-from gurobipy import GRB
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import logging as log
