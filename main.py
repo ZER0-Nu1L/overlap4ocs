@@ -1,17 +1,32 @@
-from config.instance_parser import get_parameters
-from utils.scheduler_analysis import extract_results, plot_schedule
-from paradigm.baseline import compute_baseline_schedule
-from paradigm.one_shot import compute_oneshot_schedule
-from paradigm.ideal import compute_ideal_time
-from paradigm.warm_start import build_baseline_warm_start
+"""
+SWOT Scheduler - Main entry point.
+
+This module orchestrates the scheduling workflow by delegating to specialized
+functions in the orchestrator module.
+"""
 import logging as log
 import argparse
 import toml
 import os
-import json
-from datetime import datetime
+
+from config.instance_parser import get_parameters
+from utils.scheduler_analysis import plot_schedule
+from paradigm.solver_wrapper import load_and_validate_solution
+from orchestrator import (
+    generate_output_paths,
+    compute_reference_schedules,
+    select_warm_start,
+    build_and_solve_model,
+    extract_and_validate_solution,
+    save_solutions,
+    log_results,
+    write_metrics,
+    build_metrics_payload,
+)
+
 
 def load_program_config(config_path='config/program.toml'):
+    """Load program configuration from TOML file."""
     try:
         program_config = toml.load(config_path)
         return program_config
@@ -23,169 +38,32 @@ def load_program_config(config_path='config/program.toml'):
             "show": False
         }
 
-def write_metrics(metrics_path: str, payload: dict):
-    directory = os.path.dirname(metrics_path)
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-    with open(metrics_path, 'w') as metrics_file:
-        json.dump(payload, metrics_file, indent=2)
 
+def run_debug_mode(params, solver, solver_gap, solver_time_limit, save_as_pdf, show, debug_mode):
+    """
+    Run debug mode workflows.
 
-def main():
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Run the scheduling program with custom parameters.")
-    parser.add_argument('--config', type=str, default='config/instance.toml', help='Path to the instance configuration file.')
-    parser.add_argument('--program-config', type=str, default='config/program.toml', help='Path to the program configuration file.')
-    parser.add_argument('--run-id', type=str, default=None, help='Optional identifier for this run (stored in metrics).')
-    parser.add_argument('--metrics-file', type=str, default=None, help='If provided, write aggregated results to this JSON file.')
-    args = parser.parse_args()
+    Args:
+        params: Problem parameters
+        solver: Solver name
+        solver_gap: MIP gap tolerance
+        solver_time_limit: Time limit
+        save_as_pdf: Whether to save PDFs
+        show: Whether to show plots
+        debug_mode: Debug mode (1 or 2)
 
-    # Get parameter
-    params = get_parameters(args.config)
-    # Load program configuration
-    program_config = load_program_config(args.program_config)
-    show = program_config.get("show", False)
-    save_as_pdf = program_config.get("save_as_pdf", True)
-    debug_mode = program_config.get("debug_mode", 0)
+    Returns:
+        dict: Debug output paths (for metrics)
+    """
+    from paradigm.model_gurobi import build_model
+    from paradigm.solver_wrapper import solve_model, get_solution_value, write_model
+    from utils.scheduler_analysis import extract_results, plot_schedule
 
-    # .sol or .json
-    os.makedirs('figures', exist_ok=True)
-    os.makedirs('solution', exist_ok=True)
+    debug_solution_figure = f"figures/debug_solution_k={params['k']}_p={params['p']}.pdf"
+    debug_solution_file = f"solution/debug_solution_k={params['k']}_p={params['p']}.json"
 
-    solution_figure   =  f"figures/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
-    solution_file    =  f"solution/solution_{params['algorithm']}_break_k={params['k']}_p={params['p']}_m={params['m']}.json"
-    baseline_figure   =  f"figures/baseline_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.pdf"
-    baseline_file    =  f"solution/baseline_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.json"
-    oneshot_figure    =  f"figures/oneshot_{params['algorithm']}_t_k={params['k']}_p={params['p']}_m={params['m']}.pdf"
-    oneshot_file     =  f"solution/oneshot_{params['algorithm']}__k={params['k']}_p={params['p']}_m={params['m']}.json"
-
-
-    # [Paradigm] Baseline (naive intra-collective reconfiguration)
-    cct_baseline, schedule_baseline = compute_baseline_schedule(params)
-    plot_schedule(schedule_baseline, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=baseline_figure, show=show)
-
-    # [Paradigm] One-shot
-    cct_oneshot, schedule_oneshot = compute_oneshot_schedule(params)
-    if cct_oneshot is not None:
-        plot_schedule(schedule_oneshot, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=oneshot_figure, show=show)
-
-
-    # [Paradigm] Ideal
-    cct_ideal = compute_ideal_time(params)
-
-    # [Paradigm] Solver
-    solver_gap = params.get('solver_gap')
-    solver_time_limit = params.get('solver_time_limit')
-    gap_str = f"{solver_gap:g}" if solver_gap is not None else "default"
-    limit_str = f"{solver_time_limit}s" if solver_time_limit else "default"
-    log.info(f"Solver options -> gap: {gap_str}, time_limit: {limit_str}")
-
-    warm_start_applied = False
-    warm_start_choice = "baseline"
-    warm_start_cct = cct_baseline
-    warm_start_schedule = schedule_baseline
-    if cct_oneshot is not None and schedule_oneshot:
-        if warm_start_cct is None or cct_oneshot < warm_start_cct:
-            warm_start_choice = "one-shot"
-            warm_start_cct = cct_oneshot
-            warm_start_schedule = schedule_oneshot
-
-    warm_start_payload = None
-    warm_start_label = None
-    if warm_start_schedule and warm_start_cct is not None:
-        warm_start_payload = build_baseline_warm_start(warm_start_schedule, params, warm_start_cct)
-        if warm_start_payload:
-            warm_start_label = f"Applied {warm_start_choice} warm start (CCT={warm_start_cct * 1000:.0f} μs)"
-
-
-    solver = params['solver']
-    if solver == 'gurobi':
-        from paradigm.model_gurobi import build_model
-    elif solver == 'pulp' or solver == 'copt':
-        from paradigm.model_pulp import build_model
-    else:
-        raise ValueError(f"Unsupported solver: {solver}")
-    from paradigm.solver_wrapper import solve_model, get_solution_value, write_model, load_and_validate_solution
-
-    # Build the model
-    model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end = build_model(params)
-
-    model, warm_start_applied = solve_model(
-        model,
-        solver,
-        warm_start_payload=warm_start_payload,
-        warm_start_variables={
-            'cct': cct,
-            'd': d,
-            't_start': t_start,
-            't_end': t_end,
-            'u': u,
-            'r': r,
-            't_reconf_start': t_reconf_start,
-            't_reconf_end': t_reconf_end,
-            't_step_end': t_step_end,
-        },
-        warm_start_label=warm_start_label,
-        solver_gap=solver_gap,
-        solver_time_limit=solver_time_limit,
-    )
-
-    # Extract and display results
-    schedule = extract_results(model, cct=cct, d=d, t_start=t_start, t_end=t_end, 
-                             u=u, r=r, t_reconf_start=t_reconf_start, 
-                             t_reconf_end=t_reconf_end, t_step_end=t_step_end, 
-                             params=params)
-
-    warm_start_cct_adj = None
-    if warm_start_cct is not None:
-        warm_start_cct_adj = warm_start_cct - params['T_reconf']
-
-    fallback_used = False
-    cct_optimized = get_solution_value(cct) - params['T_reconf']
-    if warm_start_cct_adj is not None and cct_optimized > warm_start_cct_adj + 1e-9:
-        log.warning("Final solution worse than warm start (%.6g > %.6g); falling back to warm-start schedule",
-                    cct_optimized, warm_start_cct_adj)
-        schedule = warm_start_schedule
-        cct_optimized = warm_start_cct_adj
-        fallback_used = True
-
-    plot_schedule(schedule, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=solution_figure, show=show)
-
-    if fallback_used:
-        with open(solution_file, 'w') as sol_fp:
-            json.dump(schedule, sol_fp, indent=2)
-    else:
-        write_model(model, solution_file, solver)
-
-    with open(baseline_file, 'w') as baseline_fp:
-        json.dump(schedule_baseline, baseline_fp, indent=2)
-    if cct_oneshot is not None and schedule_oneshot:
-        with open(oneshot_file, 'w') as oneshot_fp:
-            json.dump(schedule_oneshot, oneshot_fp, indent=2)
-
-
-    # Compare and analyze the results
-    cct_baseline_adj = cct_baseline - params['T_reconf']
-    log.info("\nComparison:")
-    cct_oneshot_adj = None
-    improvement_over_oneshot = None
-    improvement_over_baseline = ((cct_baseline_adj - cct_optimized) / cct_baseline_adj) * 100 if cct_baseline_adj != 0 else 0
-    if cct_oneshot is not None:
-        cct_oneshot_adj = cct_oneshot - params['T_reconf']
-        log.info(f"One-shot CCT: {cct_oneshot_adj * 1000:.0f} μs")
-        improvement_over_oneshot = ((cct_oneshot_adj - cct_optimized) / cct_oneshot_adj) * 100 if cct_oneshot_adj != 0 else 0
-        log.info(f"Improvement over one-shot: {improvement_over_oneshot:.0f}%")
-    else:
-        log.info("One-shot CCT: None")
-        log.info("One-shot schedule is not feasible for current parameters")
-    log.info(f"Baseline CCT:  {cct_baseline_adj * 1000:.0f} μs")
-    log.info(f"Optimized CCT: {cct_optimized * 1000:.0f} μs")
-    log.info(f"Improvement over baseline: {improvement_over_baseline:.0f}%")
-    
-    # DEBUG: debug_mode
-    debug_solution_figure    =  f"figures/debug_solution_k={params['k']}_p={params['p']}.pdf"
-    debug_solution_file      =  f"solution/debug_solution_k={params['k']}_p={params['p']}.json"
     if debug_mode == 1:
+        # Build and solve debug model
         model_debug, cct_debug, d_debug, t_start_debug, t_end_debug, u_debug, r_debug, t_reconf_start_debug, t_reconf_end_debug, t_step_end_debug = build_model(params, debug_model=True)
         model_debug, _ = solve_model(
             model_debug,
@@ -193,69 +71,124 @@ def main():
             solver_gap=solver_gap,
             solver_time_limit=solver_time_limit,
         )
-        schedule_debug = extract_results(model_debug, cct=cct_debug, d=d_debug, t_start=t_start_debug, t_end=t_end_debug, 
-                                u=u_debug, r=r_debug, t_reconf_start=t_reconf_start_debug, 
-                                t_reconf_end=t_reconf_end_debug, t_step_end=t_step_end_debug, 
-                                params=params)
+        schedule_debug = extract_results(
+            model_debug, cct=cct_debug, d=d_debug, t_start=t_start_debug, t_end=t_end_debug,
+            u=u_debug, r=r_debug, t_reconf_start=t_reconf_start_debug,
+            t_reconf_end=t_reconf_end_debug, t_step_end=t_step_end_debug,
+            params=params
+        )
         plot_schedule(schedule_debug, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=debug_solution_figure, show=show)
         write_model(model_debug, debug_solution_file, solver)
+
+        cct_debug_optimized = get_solution_value(cct_debug) - params['T_reconf']
         log.info("Comparison:")
-        cct_debug_optimized = cct_debug.X - params['T_reconf']
         log.info(f"Optimized CCT with debug model: {(cct_debug_optimized) * 1000:.0f} μs")
-        log.info(f"Baseline CCT: {cct_baseline * 1000:.0f} μs")
-        improvement = ((cct_baseline - cct_debug_optimized) / cct_baseline) * 100 if cct_baseline != 0 else 0
-        log.info(f"Improvement: {improvement:.0f}%")
+
+        # Validate both solutions
         load_and_validate_solution(params, debug_solution_file, if_debug_model=False, solver=solver)
-        load_and_validate_solution(params, solution_file, if_debug_model=True, solver=solver)
 
     elif debug_mode == 2:
+        # Load and validate external solution
         compare_file = "solution/modified_solution_k=2_p=8.json"
         load_and_validate_solution(params, compare_file, if_debug_model=True, solver=solver)
 
+    return {
+        'figure': debug_solution_figure if debug_mode == 1 else None,
+        'file': debug_solution_file if debug_mode == 1 else None,
+    }
+
+
+def main():
+    """Main entry point for SWOT scheduler."""
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="Run the scheduling program with custom parameters.")
+    parser.add_argument('--config', type=str, default='config/instance.toml', help='Path to the instance configuration file.')
+    parser.add_argument('--program-config', type=str, default='config/program.toml', help='Path to the program configuration file.')
+    parser.add_argument('--run-id', type=str, default=None, help='Optional identifier for this run (stored in metrics).')
+    parser.add_argument('--metrics-file', type=str, default=None, help='If provided, write aggregated results to this JSON file.')
+    args = parser.parse_args()
+
+    # Load configurations
+    params = get_parameters(args.config)
+    program_config = load_program_config(args.program_config)
+    show = program_config.get("show", False)
+    save_as_pdf = program_config.get("save_as_pdf", True)
+    debug_mode = program_config.get("debug_mode", 0)
+
+    # Create output directories
+    os.makedirs('figures', exist_ok=True)
+    os.makedirs('solution', exist_ok=True)
+
+    # Generate output paths
+    output_paths = generate_output_paths(params)
+
+    # Compute reference schedules (baseline, one-shot, ideal)
+    cct_baseline, schedule_baseline, cct_oneshot, schedule_oneshot, cct_ideal = compute_reference_schedules(
+        params, output_paths, save_as_pdf=save_as_pdf, show=show
+    )
+
+    # Select best warm start
+    solver_gap = params.get('solver_gap')
+    solver_time_limit = params.get('solver_time_limit')
+    gap_str = f"{solver_gap:g}" if solver_gap is not None else "default"
+    limit_str = f"{solver_time_limit}s" if solver_time_limit else "default"
+    log.info(f"Solver options -> gap: {gap_str}, time_limit: {limit_str}")
+
+    warm_start_payload, warm_start_label, warm_start_choice, warm_start_cct, warm_start_schedule = select_warm_start(
+        cct_baseline, schedule_baseline, cct_oneshot, schedule_oneshot, params
+    )
+
+    # Build and solve MILP model
+    model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, warm_start_applied = build_and_solve_model(
+        params, warm_start_payload, warm_start_label, solver_gap, solver_time_limit
+    )
+
+    # Extract and validate solution
+    warm_start_cct_adj = None
+    if warm_start_cct is not None:
+        warm_start_cct_adj = warm_start_cct - params['T_reconf']
+
+    schedule, cct_optimized, fallback_used = extract_and_validate_solution(
+        model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end,
+        params, warm_start_cct_adj, warm_start_schedule
+    )
+
+    # Plot and save optimized solution
+    plot_schedule(schedule, params['k'], params['T_reconf'], save_as_pdf=save_as_pdf, filename=output_paths['solution_figure'], show=show)
+    save_solutions(
+        schedule, model, params['solver'], fallback_used, output_paths,
+        schedule_baseline, cct_oneshot, schedule_oneshot
+    )
+
+    # Log comparison results
+    improvement_over_baseline, improvement_over_oneshot, cct_baseline_adj, cct_oneshot_adj = log_results(
+        cct_baseline, cct_oneshot, cct_optimized, params
+    )
+
+    # Debug mode
+    debug_outputs = None
+    if debug_mode > 0:
+        debug_outputs = run_debug_mode(params, params['solver'], solver_gap, solver_time_limit, save_as_pdf, show, debug_mode)
+        if debug_mode == 1:
+            # Also validate the main solution against debug model
+            load_and_validate_solution(params, output_paths['solution_file'], if_debug_model=True, solver=params['solver'])
+
+    # Write metrics if requested
     if args.metrics_file:
-        metrics_payload = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "run_id": args.run_id,
-            "config_file": args.config,
-            "program_config": args.program_config,
-            "solver": solver,
-            "status": "success",
-            "figures": {
-                "solution": solution_figure,
-                "baseline": baseline_figure,
-                "oneshot": oneshot_figure if cct_oneshot is not None else None,
-                "warm_start_applied": warm_start_applied,
-                "warm_start_source": warm_start_choice,
-                "warm_start_cct": warm_start_cct,
-                "warm_start_fallback_used": fallback_used,
-                "debug": debug_solution_figure if debug_mode == 1 else None
-            },
-            "solutions": {
-                "solution": solution_file,
-                "baseline": baseline_file,
-                "oneshot": oneshot_file if cct_oneshot is not None else None,
-                "debug": debug_solution_file if debug_mode == 1 else None
-            },
-            "cct": {
-                "optimized": cct_optimized,
-                "baseline": cct_baseline_adj,
-                "oneshot": cct_oneshot_adj if cct_oneshot is not None else None,
-                "ideal": cct_ideal
-            },
-            "improvement_percent": {
-                "over_baseline": improvement_over_baseline,
-                "over_oneshot": improvement_over_oneshot if cct_oneshot is not None else None
-            },
-            "params": params,
-            "solver_options": {
-                "gap": solver_gap,
-                "time_limit": solver_time_limit,
-            },
-            "notes": {
-                "debug_mode": debug_mode
-            }
-        }
+        metrics_payload = build_metrics_payload(
+            args, params, params['solver'], output_paths, warm_start_applied, warm_start_choice,
+            warm_start_cct, fallback_used, cct_optimized, cct_baseline_adj,
+            cct_oneshot, cct_oneshot_adj, cct_ideal, improvement_over_baseline,
+            improvement_over_oneshot, solver_gap, solver_time_limit, debug_mode
+        )
+
+        # Add debug outputs if available
+        if debug_outputs:
+            metrics_payload['figures']['debug'] = debug_outputs.get('figure')
+            metrics_payload['solutions']['debug'] = debug_outputs.get('file')
+
         write_metrics(args.metrics_file, metrics_payload)
+
 
 if __name__ == "__main__":
     log.basicConfig(level=log.INFO, format='%(message)s')
