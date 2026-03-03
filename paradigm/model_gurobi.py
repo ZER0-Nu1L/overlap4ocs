@@ -244,8 +244,9 @@ def _validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf
     m_i = params['m_i']
     B = params['B']
     T_reconf = params['T_reconf']
+    T_lat = params.get('T_lat', 0)
     configurations = params['configurations']
-    
+
     epsilon = 1e-6  # Tolerance for floating-point comparisons
 
     # Check all constraints

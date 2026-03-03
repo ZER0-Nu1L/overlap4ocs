@@ -38,7 +38,7 @@ def solve_model(
     solver_time_limit: float | None = None,
 ):
     """Solve the model and optionally apply a warm start before optimization."""
-    warm_start_applied = True # NOTE: 🚧🚧🚧
+    warm_start_applied = False
     if warm_start_payload and warm_start_variables:
         warm_start_applied = apply_warm_start(solver, warm_start_variables, warm_start_payload)
         if warm_start_applied and warm_start_label:

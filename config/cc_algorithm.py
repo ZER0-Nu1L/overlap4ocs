@@ -32,8 +32,8 @@ def compute_rs_having_doubling_params(p: int, m: float) -> Dict[str, object]:
     return {
         'p': p_new,
         'num_steps': num_steps,
-        'm_i': compute_ag_hd_message_sizes(m, num_steps),
-        'configurations': compute_ag_hd_configurations(num_steps),
+        'm_i': compute_rs_hd_message_sizes(m, num_steps),
+        'configurations': compute_rs_hd_configurations(num_steps),
     }
 
 def compute_rs_hd_message_sizes(m: float, num_steps: int) -> Dict[int, float]:
