@@ -103,11 +103,11 @@ def solve_model(
         # For Arm-based Mac platforms.
         # Reference: https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
         if check_platform.is_arm_mac():
-            solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', **solver_kwargs)
-        else: 
-            solver = pulp.PULP_CBC_CMD(**solver_kwargs)
+            pulp_solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', **solver_kwargs)
+        else:
+            pulp_solver = pulp.PULP_CBC_CMD(**solver_kwargs)
 
-        model.solve(solver)        
+        model.solve(pulp_solver)        
     elif solver == 'pulp_gurobi':
         import pulp
         import multiprocessing
@@ -132,14 +132,14 @@ def solve_model(
         if gurobi_cmd_path:
             solver_kwargs['path'] = gurobi_cmd_path
 
-        solver = pulp.GUROBI_CMD(**solver_kwargs)
-        model.solve(solver)
+        pulp_solver = pulp.GUROBI_CMD(**solver_kwargs)
+        model.solve(pulp_solver)
     elif solver == 'copt':
         from pulp import COPT
-        solver = COPT()
+        copt_solver = COPT()
         if solver_gap is not None or (solver_time_limit and solver_time_limit > 0):
             log.warning("solver_gap/solver_time_limit are not currently applied for COPT solver")
-        model.solve(solver)
+        model.solve(copt_solver)
     else:
         raise ValueError(f"Unsupported solver: {solver}")
     return model, warm_start_applied

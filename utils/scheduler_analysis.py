@@ -51,7 +51,7 @@ def extract_results(source, **kwargs):
         elif params['solver'] == 'pulp' or params['solver'] == 'copt' or params['solver'] == 'pulp_gurobi':
             import pulp
             status_str = pulp.LpStatus[model.status]
-            print("Pulp solver status:", status_str)
+            log.info("Pulp solver status: %s", status_str)
             optimal = (status_str == 'Optimal')
 
         if optimal:
