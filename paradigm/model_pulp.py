@@ -1,5 +1,33 @@
 import pulp
 
+
+def compute_bigM(params):
+    """
+    Compute appropriate Big-M value for the MILP model.
+
+    Big-M should be large enough to not constrain the problem,
+    but not so large as to cause numerical issues.
+    """
+    m = params['m']
+    k = params['k']
+    B = params['B']
+    T_reconf = params['T_reconf']
+    num_steps = params.get('num_steps', 1)
+
+    # Conservative upper bound on CCT
+    max_transmission_time = m / B
+    max_reconfig_time = num_steps * T_reconf
+    theoretical_upper_bound = max_transmission_time + max_reconfig_time
+
+    # Big-M for data volume
+    M_data = max(m, max(params['m_i'].values()) if 'm_i' in params else m) * 1.5
+
+    # Big-M for time
+    M_time = theoretical_upper_bound * 2
+
+    return M_data, M_time
+
+
 def build_model(params, debug_model=False):
     num_steps = params['num_steps']
     k = params['k']
@@ -8,8 +36,7 @@ def build_model(params, debug_model=False):
     T_lat = params.get('T_lat', 0)
     m_i = params['m_i']
     configurations = params['configurations']
-    M = params['m']  # Large constant value for big-M method 
-    M_time = 1e6
+    M_data, M_time = compute_bigM(params)  # Robust Big-M values
 
     d = {}
     t_start = {}
@@ -61,7 +88,7 @@ def build_model(params, debug_model=False):
     # (3) Usage indicator variable constraint
     for i in range(1, num_steps+1):
         for j in range(1, k+1):
-            prob += (d[(i,j)] <= u[(i,j)] * M, f"use_indicator_step_{i}_{j}")
+            prob += (d[(i,j)] <= u[(i,j)] * M_data, f"use_indicator_step_{i}_{j}")
 
     # (4) Reconfiguration time constraint
     for i in range(1, num_steps+1):

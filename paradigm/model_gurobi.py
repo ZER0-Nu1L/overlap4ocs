@@ -4,6 +4,37 @@ import os, json
 import logging as log
 
 
+def compute_bigM(params):
+    """
+    Compute appropriate Big-M value for the MILP model.
+
+    Big-M should be large enough to not constrain the problem,
+    but not so large as to cause numerical issues.
+
+    For data volume constraints: M >= max message size
+    For time constraints: M >= theoretical upper bound on CCT
+    """
+    m = params['m']
+    k = params['k']
+    B = params['B']
+    T_reconf = params['T_reconf']
+    num_steps = params.get('num_steps', 1)
+
+    # Conservative upper bound on CCT:
+    # Worst case: all data on one OCS + all reconfigurations
+    max_transmission_time = m / B
+    max_reconfig_time = num_steps * T_reconf
+    theoretical_upper_bound = max_transmission_time + max_reconfig_time
+
+    # Big-M for data volume: use max message size with safety factor
+    M_data = max(m, max(params['m_i'].values()) if 'm_i' in params else m) * 1.5
+
+    # Big-M for time: use theoretical upper bound with safety factor
+    M_time = theoretical_upper_bound * 2
+
+    return M_data, M_time
+
+
 def build_model(params, debug_model=False):
     model = gp.Model("Optimization_with_overlapping_tech")
     model.setParam('LogToConsole', 0)  # NOTE: 1 means output to console, 0 means no output
@@ -20,7 +51,7 @@ def build_model(params, debug_model=False):
     B = params['B']
     T_reconf = params['T_reconf']
     T_lat = params.get('T_lat', 0)
-    M = params['m']  # Large constant value for big-M method 
+    M_data, M_time = compute_bigM(params)  # Robust Big-M values
     M_config = max(configurations.values())
 
     # Variables
@@ -55,7 +86,7 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
     m_i = params['m_i']
     B = params['B']
     T_reconf = params['T_reconf']
-    M = params['m']
+    M_data, M_time = compute_bigM(params)
     configurations = params['configurations']
 
     # (1) Message size constraint
@@ -72,7 +103,7 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
     # (3) Usage indicator variable constraint
     for i in range(1, num_steps + 1):
         for j in range(1, k + 1):
-            model.addConstr(d[i, j] <= u[i, j] * M,
+            model.addConstr(d[i, j] <= u[i, j] * M_data,
                             name=f"use_indicator_step_{i}_ocs_{j}")
             model.addConstr(d[i, j] >= 0,
                             name=f"d_nonnegative_step_{i}_ocs_{j}")
@@ -159,7 +190,7 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
         for i in range(2, num_steps + 1):
             for j in range(1, k + 1):
                 model.addConstr(
-                    t_step_end[i - 1] <= t_start[i, j] + M * (1 - u[i, j]),
+                    t_step_end[i - 1] <= t_start[i, j] + M_time * (1 - u[i, j]),
                     name=f"step_end_before_start_step_{i}_ocs_{j}"
                 )
     else:
