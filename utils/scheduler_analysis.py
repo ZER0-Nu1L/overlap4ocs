@@ -74,7 +74,6 @@ def extract_results(source, **kwargs):
             schedule.sort(key=lambda s: s['t_start'])
             return schedule
         else:
-            import logging as log
             log.info("No optimal solution found.")
             return None
 
