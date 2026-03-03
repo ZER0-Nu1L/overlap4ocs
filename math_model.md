@@ -90,21 +90,21 @@ $$
 
 **Explanation of constraints (aligned with `model_gurobi.py` / `model_pulp.py`):**
 
-- **(1)** 总数据量约束：每个步骤 $i$ 在所有 OCS 上发送的数据总量等于 $m_i$。
-- **(2)** 带宽+时延约束：传输时长等于“数据量除以带宽 $B$”与固定端到端时延 $T_{\text{lat}}$ 之和（当 $u_{i,j}=1$ 时生效）。
-- **(3)** 使用指示变量约束：只有当 $u_{i,j}=1$ 时，$d_{i,j}$ 才能为正；否则被 big-$M$ 约束为 0。
-- **(4)** 重配置时长：当且仅当 $r_{i,j}=1$ 时，重配置持续 $T_{\text{recfg}}$ 时间。
-- **(5)** **(P1)** 先重配置后传输：传输开始时间不早于重配置结束时间。
-- **(6)**–**(8)** 配置变化与使用逻辑：
-   - 第一步默认需要重配置（$r_{1,j} \ge u_{1,j}$）。
-   - 后续步骤中，如果当前拓扑与上一步不同且该 OCS 被使用（由代码根据 $\text{cfg}_i$、$\text{cfg}_{i-1}$ 判定），则必须进行重配置（$r_{i,j}$ 由 $u_{i,j}$ 和“是否同构”共同决定），同时 $u_{i,j} \ge r_{i,j}$。
-- **(9)**–**(13)** **(P2)** OCS 活动不重叠：
-   - $t_{\text{prev\_e}_{i,j}}$ 记录 OCS $j$ 在步骤 $i$ 之前最近一次完成的活动时间（上一轮传输或重配置）；
-   - 当前轮的重配置开始时间 $t_{\text{recfg\_s}_{i,j}}$ 不得早于该时间，从而避免同一 OCS 上活动的时间重叠。
-- **(14)**–**(15)** 步骤完成与跨步同步（**P3**）：
-   - 每步完成时间 $t_{\text{step\_e}_i}$ 至少为当步所有活跃 OCS 传输结束时间的最大值；
-   - 下一步的任意传输开始时间不得早于上一步的完成时间。
-- **(16)** CCT 定义：整体 CCT 是所有步骤完成时间的最大值，并由变量 $\text{CCT}$ 表示，是模型的优化目标。
+- **(1)** **Total data volume constraint**: For each step $i$, the sum of data volumes transmitted across all OCSes equals $m_i$.
+- **(2)** **Bandwidth + latency constraint**: Transmission duration equals "data volume divided by bandwidth $B$" plus fixed end-to-end latency $T_{\text{lat}}$ (effective when $u_{i,j}=1$).
+- **(3)** **Usage indicator constraint**: Only when $u_{i,j}=1$ can $d_{i,j}$ be positive; otherwise constrained to 0 by big-$M$ method.
+- **(4)** **Reconfiguration duration**: If and only if $r_{i,j}=1$, reconfiguration lasts $T_{\text{recfg}}$ time.
+- **(5)** **(P1) Reconfiguration precedes transmission**: Transmission start time must not be earlier than reconfiguration end time.
+- **(6)**–**(8)** **Configuration change and usage logic**:
+   - First step defaults to requiring reconfiguration ($r_{1,j} \ge u_{1,j}$).
+   - In subsequent steps, if the current topology differs from the previous step and the OCS is used (determined by code comparing $\text{cfg}_i$ vs $\text{cfg}_{i-1}$), reconfiguration is required ($r_{i,j}$ determined by $u_{i,j}$ and "whether configurations match"), while maintaining $u_{i,j} \ge r_{i,j}$.
+- **(9)**–**(13)** **(P2) No overlapping OCS activities**:
+   - $t_{\text{prev\_e}_{i,j}}$ records the last completion time of previous activities (transmission or reconfiguration) on OCS $j$ before step $i$;
+   - Current round's reconfiguration start time $t_{\text{recfg\_s}_{i,j}}$ must not be earlier than this time, preventing temporal overlap of activities on the same OCS.
+- **(14)**–**(15)** **Step completion and cross-step synchronization (P3)**:
+   - Each step's completion time $t_{\text{step\_e}_i}$ is at least the maximum of all active OCS transmission end times in that step;
+   - Any transmission start time in the next step must not be earlier than the previous step's completion time.
+- **(16)** **CCT definition**: Overall CCT is the maximum of all step completion times, represented by variable $\text{CCT}$, which is the optimization objective.
 
 ---
 

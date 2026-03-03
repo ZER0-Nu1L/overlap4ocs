@@ -102,8 +102,10 @@ def solve_model(
 
         # For Arm-based Mac platforms.
         # Reference: https://github.com/tyler-griggs/melange-release/blob/main/melange/solver.py
+        # Allow custom CBC path via environment variable (defaults to Homebrew path on ARM Mac)
         if check_platform.is_arm_mac():
-            pulp_solver = pulp.getSolver('COIN_CMD', path='/opt/homebrew/opt/cbc/bin/cbc', **solver_kwargs)
+            cbc_path = os.getenv('CBC_PATH', '/opt/homebrew/opt/cbc/bin/cbc')
+            pulp_solver = pulp.getSolver('COIN_CMD', path=cbc_path, **solver_kwargs)
         else:
             pulp_solver = pulp.PULP_CBC_CMD(**solver_kwargs)
 
@@ -147,9 +149,9 @@ def solve_model(
 # TODO: test
 def load_solution(params, filename, solver):
     """
-    加载解文件并转换为统一的数据结构。
-    对于 PuLP 写出的 JSON 格式，变量名格式为 "变量名_索引"
-    例如: "d_1_1", "t_start_1_1", "CCT", "t_step_end_1" 等。
+    Load solution file and convert to unified data structure.
+    For PuLP JSON format, variable names follow the pattern "varname_index"
+    Examples: "d_1_1", "t_start_1_1", "CCT", "t_step_end_1", etc.
     """
     if not os.path.exists(filename):
         raise FileNotFoundError(f"Solution file {filename} not found.")
@@ -183,7 +185,8 @@ def load_solution(params, filename, solver):
 # TODO: test
 def validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, cct, debug_model=False):
     """
-    检查解是否满足所有约束，与 model_gurobi.py 中 _validate_solution 保持一致
+    Validate that the solution satisfies all constraints.
+    Consistent with _validate_solution in model_gurobi.py
     """
     k = params['k']
     num_steps = params['num_steps']
@@ -195,67 +198,67 @@ def validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_
     epsilon = 1e-6
 
     for i in range(1, num_steps + 1):
-        # (1) 消息大小约束：每个步骤 i 内，所有 OCS 的数据量之和应等于 m_i[i]
+        # (1) Message size constraint: sum of data volumes across all OCS should equal m_i[i] for each step i
         sum_d = sum(d[(i, j)] for j in range(1, k + 1))
         if abs(sum_d - m_i[i]) > epsilon:
-            log.info(f"步骤 {i} 消息大小约束不满足: sum(d)= {sum_d}, m_i[{i}]= {m_i[i]}")
+            log.info(f"Step {i} message size constraint violated: sum(d)= {sum_d}, m_i[{i}]= {m_i[i]}")
             return False
 
         for j in range(1, k + 1):
-            # (2) 带宽+时延限制约束：t_end - t_start == d/B + T_lat * u
+            # (2) Bandwidth + latency constraint: t_end - t_start == d/B + T_lat * u
             expected_duration = d[(i, j)] / B + T_lat * u[(i, j)]
             if abs((t_end[(i, j)] - t_start[(i, j)]) - expected_duration) > epsilon:
-                log.info(f"步骤 {i}, OCS {j} 带宽+时延限制不满足: t_end-t_start= {t_end[(i, j)] - t_start[(i, j)]}, expected= {expected_duration}")
+                log.info(f"Step {i}, OCS {j} bandwidth+latency constraint violated: t_end-t_start= {t_end[(i, j)] - t_start[(i, j)]}, expected= {expected_duration}")
                 return False
 
-            # (3) 使用指示变量约束：若 d>0，则 u 应为1
+            # (3) Usage indicator constraint: if d>0, then u should be 1
             if d[(i, j)] > epsilon and u[(i, j)] < 0.5:
-                log.info(f"步骤 {i}, OCS {j} 使用指示变量不一致: d= {d[(i, j)]}, u= {u[(i, j)]}")
+                log.info(f"Step {i}, OCS {j} usage indicator inconsistent: d= {d[(i, j)]}, u= {u[(i, j)]}")
                 return False
 
-            # (4) 重配置时间约束：t_reconf_end - t_reconf_start == r * T_reconf
+            # (4) Reconfiguration time constraint: t_reconf_end - t_reconf_start == r * T_reconf
             if abs((t_reconf_end[(i, j)] - t_reconf_start[(i, j)]) - r[(i, j)] * T_reconf) > epsilon:
-                log.info(f"步骤 {i}, OCS {j} 重配置时间不满足: t_reconf_end-t_reconf_start= {t_reconf_end[(i, j)] - t_reconf_start[(i, j)]}, expected= {r[(i, j)] * T_reconf}")
+                log.info(f"Step {i}, OCS {j} reconfiguration time constraint violated: t_reconf_end-t_reconf_start= {t_reconf_end[(i, j)] - t_reconf_start[(i, j)]}, expected= {r[(i, j)] * T_reconf}")
                 return False
 
-            # (5) 传输必须在重配置后开始
+            # (5) Transmission must start after reconfiguration completes
             if t_start[(i, j)] < t_reconf_end[(i, j)] - epsilon:
-                log.info(f"步骤 {i}, OCS {j} 传输开始早于重配置结束: t_start= {t_start[(i, j)]}, t_reconf_end= {t_reconf_end[(i, j)]}")
+                log.info(f"Step {i}, OCS {j} transmission starts before reconfiguration ends: t_start= {t_start[(i, j)]}, t_reconf_end= {t_reconf_end[(i, j)]}")
                 return False
 
-            # (6) 配置变化指示变量：对于非第一步，若配置发生变化且 u=1，则 r 应为1
+            # (6) Configuration change indicator: for non-first steps, if config changes and u=1, then r should be 1
             if i > 1:
                 if configurations[i] != configurations[i - 1] and u[(i, j)] > 0.5 and r[(i, j)] < 0.5:
-                    log.info(f"步骤 {i}, OCS {j} 配置变化指示不满足: u= {u[(i, j)]}, r= {r[(i, j)]}")
+                    log.info(f"Step {i}, OCS {j} configuration change indicator violated: u= {u[(i, j)]}, r= {r[(i, j)]}")
                     return False
 
-        # (8) 步骤完成时间定义：t_step_end[i] 应等于所有 OCS (t_end * u) 的最大值
+        # (8) Step completion time definition: t_step_end[i] should equal max of all OCS (t_end * u)
         max_val = max(t_end[(i, j)] * u[(i, j)] for j in range(1, k + 1))
         if abs(t_step_end[i] - max_val) > epsilon:
-            log.info(f"步骤 {i} 完成时间定义不满足: t_step_end= {t_step_end[i]}, expected= {max_val}")
+            log.info(f"Step {i} completion time definition violated: t_step_end= {t_step_end[i]}, expected= {max_val}")
             return False
 
-        # (9) 步骤依赖性约束：对于 i>1，每个步骤的传输开始时间不早于前一步骤的完成时间
+        # (9) Step dependency constraint: for i>1, transmission start time must not be earlier than previous step completion
         if i > 1:
             for j in range(1, k + 1):
                 if t_start[(i, j)] < t_step_end[i - 1] - epsilon:
-                    log.info(f"步骤 {i}, OCS {j} 依赖性不满足: t_start= {t_start[(i, j)]}, 前一步骤完成时间= {t_step_end[i - 1]}")
+                    log.info(f"Step {i}, OCS {j} dependency constraint violated: t_start= {t_start[(i, j)]}, previous step completion time= {t_step_end[i - 1]}")
                     return False
 
-    # (10) 通信完成时间定义：CCT 应大于等于所有步骤完成时间的最大值
+    # (10) CCT definition: CCT should be greater than or equal to max of all step completion times
     if abs(cct - max(t_step_end[i] for i in range(1, num_steps + 1))) > epsilon:
-        log.info(f"CCT 定义不满足: cct= {cct}, expected>= {max(t_step_end[i] for i in range(1, num_steps + 1))}")
+        log.info(f"CCT definition violated: cct= {cct}, expected>= {max(t_step_end[i] for i in range(1, num_steps + 1))}")
         return False
 
-    log.info("所有约束均满足")
+    log.info("All constraints satisfied")
     return True
 
 def load_and_validate_solution(params, filename, if_debug_model=False, solver='pulp'):
     """
-    加载解文件后验证解的可行性，并输出验证结果
+    Load solution file, validate feasibility, and output validation results
     """
     cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end = load_solution(params, filename, solver)
     valid = validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, cct, if_debug_model)
-    model_mode = "调试" if if_debug_model else "正常"
-    log.info(f"解在 {model_mode} 模型中是{'可行' if valid else '不可行'}的\n")
+    model_mode = "debug" if if_debug_model else "normal"
+    log.info(f"Solution is {'feasible' if valid else 'infeasible'} in {model_mode} model\n")
     return valid
