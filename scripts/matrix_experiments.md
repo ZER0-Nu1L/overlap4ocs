@@ -7,7 +7,7 @@
 - **覆盖参数空间**：一次性声明拓扑、算法、消息大小的大型组合，让脚本自动遍历。
 - **确定性复现**：可随时重新生成同样的 `instance.toml` 文件，并仅 rerun 感兴趣的子集，无需手改配置。
 - **完整留存**：统一使用 `logs/runs/<run-id>/` 结构保存图像、解文件、配置、日志与指标，确保可追溯。
-- **统一分析**：把所有实验写入一份全局 CSV（`logs/matrix_results.csv`），Notebook 直接读取即可绘图，无须手动聚合 JSON。
+- **统一分析**：每个矩阵按 spec 中的 `output.results_csv` 追加写入，后续可由 `scripts/prepare_simulation_data.py` 聚合为论文绘图 CSV。
 
 ## 矩阵配置（`config/matrix/*.toml`）
 
@@ -53,7 +53,7 @@ PYTHONPATH=. python scripts/matrix_runner.py --matrix config/matrix/example_matr
 关键特性：
 
 1. 读取 spec 并确保配置存在（若加 `--regenerate` 则强制重建）。
-2. 结合 `logs/matrix_results.csv` 的哈希，计算待运行列表；默认跳过已成功完成的条目，可用 `--no-resume` 关闭、`--rerun-failed` 只重跑失败项。
+2. 结合目标 `results_csv` 的哈希，计算待运行列表；默认跳过已成功完成的条目，可用 `--no-resume` 关闭、`--rerun-failed` 只重跑失败项。
 3. 对每个待运行的配置调用内置的 `run_experiment`，自动完成日志、指标、文件拷贝等 run 级别记录。
 4. 每次运行结束即向 CSV 追加一行，字段包含时间、matrix_id、算法、消息大小、solver、耗时、求解状态、各类 CCT、相对提升、`metrics.json` 路径以及配置哈希。
 5. 提供控制/恢复选项：
@@ -77,7 +77,7 @@ logs/runs/<run-id>/
    |- metadata.json           # matrix_runner 记录的命令、git 信息、耗时
 ```
 
-全局 CSV（`logs/matrix_results.csv`）：追加式日志。Notebook 只需按 `matrix_id`、`algorithm`、`message_mib` 过滤即可分析。由于每行包含 `metrics.json` 的绝对路径，深入挖掘单个 run 时仍可直接定位。
+结果 CSV（路径由每个 spec 的 `output.results_csv` 决定）：追加式日志。Notebook 或绘图脚本可按 `matrix_id`、`algorithm`、`message_mib` 过滤分析。由于每行包含 `metrics.json` 的绝对路径，深入挖掘单个 run 时仍可直接定位。
 
 ## 推荐流程
 
@@ -90,7 +90,7 @@ logs/runs/<run-id>/
    ```bash
    PYTHONPATH=. python3 scripts/matrix_runner.py --matrix config/matrix/new_spec.toml --limit 10
    ```
-4. 通过 `logs/matrix_results.csv`、`logs/runs/<run-id>/metrics.json` 或 Notebook（参考 `_mkfigure/simulation_fig-us.ipynb`）查看结果。
+4. 通过对应 `results_csv`、`logs/runs/<run-id>/metrics.json` 或 `scripts/simulation_fig.ipynb` 查看结果；需要论文级聚合时运行 `scripts/prepare_simulation_data.py`。
 5. 如需继续，直接再次运行矩阵脚本，默认会跳过已成功的组合；若需重跑失败项，使用 `--rerun-failed`。
 
 ## 后续扩展建议

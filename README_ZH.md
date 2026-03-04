@@ -31,6 +31,8 @@ SWOT（面向工作负载对齐的光/重叠拓扑调度器，Scheduler for Work
 | **ReduceScatter** | Halving-Doubling |
 
 > SWOT 支持每个集体原语的大多数算法，但在此代码库中，我们主要实现了上述典型算法。如果您需要扩展，可以在 config/cc_algorithm.py 中添加自己的实现。
+>
+> 说明：在 `scripts/simulation_fig.ipynb` / `scripts/simulation_fig.py` 的论文绘图流程中，还会使用 `ar_dbt`、`ar_dbt_pipe` 等 AllReduce 解析基线。这些是脚本中用于对比的计算模型，不属于 `config/cc_algorithm.py` 中注册的调度算法实现。
 
 ## 🏗️ 系统架构
 
@@ -264,7 +266,10 @@ overlap4ocs/
 ├── scripts/
 │   ├── generate_matrix_configs.py  # 生成实验配置
 │   ├── matrix_runner.py            # 执行批量实验
-│   └── matrix_archive.py           # 归档实验结果
+│   ├── matrix_archive.py           # 归档实验结果
+│   ├── prepare_simulation_data.py  # 生成论文绘图所需的聚合 CSV
+│   ├── simulation_fig.py           # 可复现 CLI 出图脚本（exp1.x/exp2.x）
+│   └── simulation_fig.ipynb        # 论文完整绘图 notebook
 ├── utils/
 │   ├── scheduler_analysis.py   # 结果提取与可视化
 │   └── check_platform.py       # 平台检测
@@ -275,18 +280,38 @@ overlap4ocs/
 
 ## 🔬 复现论文结果
 
-复现论文中的实验结果：
+论文绘图依赖 `scripts/simulation_fig.ipynb` 及矩阵实验 CSV。  
+为避免手工拼接数据，建议按下面流程复现：
 
 ```bash
-# 运行论文中的所有实验
-for matrix in config/matrix/exp*.toml; do
+# 1) 执行矩阵实验
+for matrix in \
+  config/matrix/exp1.1-hd+bruck-1.toml \
+  config/matrix/exp1.1-pair-1.toml \
+  config/matrix/exp1.1-hd+bruck-2.toml \
+  config/matrix/exp1.1-pair-2.toml \
+  config/matrix/exp1.2-hd+bruck.toml \
+  config/matrix/exp1.2-pair.toml \
+  config/matrix/exp1.3-ar_rb.toml \
+  config/matrix/exp1.3-a2a_pair.toml \
+  config/matrix/exp1.3-a2a_bruck.toml \
+  config/matrix/example_matrix_sweep_msg+k-B.toml \
+  config/matrix/example_matrix_sweep_msg+Tr.toml; do
   PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
 done
 
-# 使用 Jupyter notebook 分析结果
+# 2) 生成 notebook 依赖的聚合 CSV
+uv run python scripts/prepare_simulation_data.py --target all
+
+# 3a) 使用 CLI 直接出图（exp1.1/1.2/1.3 + exp2.1/2.2）
+uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper
+
+# 3b) 使用 notebook 交互分析（完整论文图）
 uv sync --extra notebook
-jupyter notebook notebook/
+jupyter notebook scripts/simulation_fig.ipynb
 ```
+
+配置文件与 CSV/图表入口映射见 [`docs/reproducibility.md`](docs/reproducibility.md)。
 
 ## 📊 可视化
 

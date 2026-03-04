@@ -31,6 +31,8 @@ SWOT (Scheduler for Workload-aligned Optical/Overlapping Topologies) is a framew
 | **ReduceScatter** | Halving-Doubling |
 
 > SWOT supports most of the algorithms for each Collective Primitive, but in this codebase, we mainly implemented the typical algorithms mentioned above. If you need to extend it, you can add your own implementations in config/cc_algorithm.py.
+>
+> Note: for paper plotting in `scripts/simulation_fig.ipynb` / `scripts/simulation_fig.py`, we also include analytical AllReduce baselines such as `ar_dbt` and `ar_dbt_pipe`. These are comparison models computed in scripts, not scheduling algorithms registered in `config/cc_algorithm.py`.
 
 ## 🏗️ Architecture
 
@@ -264,7 +266,10 @@ overlap4ocs/
 ├── scripts/
 │   ├── generate_matrix_configs.py  # Generate experiment configs
 │   ├── matrix_runner.py            # Execute batch experiments
-│   └── matrix_archive.py           # Archive experiment results
+│   ├── matrix_archive.py           # Archive experiment results
+│   ├── prepare_simulation_data.py  # Build merged CSVs used by paper plotting
+│   ├── simulation_fig.py           # Reproducible CLI figure generation (exp1.x/exp2.x)
+│   └── simulation_fig.ipynb        # Full paper plotting notebook
 ├── utils/
 │   ├── scheduler_analysis.py   # Result extraction & visualization
 │   └── check_platform.py       # Platform detection
@@ -275,18 +280,39 @@ overlap4ocs/
 
 ## 🔬 Reproducing Paper Results
 
-To reproduce the experimental results from the paper:
+The paper figure pipeline depends on `scripts/simulation_fig.ipynb` plus matrix CSV outputs.
+For direct reproducibility, use the scripted workflow below:
 
 ```bash
-# Run all experiments from the paper
-for matrix in config/matrix/exp*.toml; do
+# 1) Run matrix experiments
+for matrix in \
+  config/matrix/exp1.1-hd+bruck-1.toml \
+  config/matrix/exp1.1-pair-1.toml \
+  config/matrix/exp1.1-hd+bruck-2.toml \
+  config/matrix/exp1.1-pair-2.toml \
+  config/matrix/exp1.2-hd+bruck.toml \
+  config/matrix/exp1.2-pair.toml \
+  config/matrix/exp1.3-ar_rb.toml \
+  config/matrix/exp1.3-a2a_pair.toml \
+  config/matrix/exp1.3-a2a_bruck.toml \
+  config/matrix/example_matrix_sweep_msg+k-B.toml \
+  config/matrix/example_matrix_sweep_msg+Tr.toml; do
   PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
 done
 
-# Analyze results using Jupyter notebooks
+# 2) Build merged CSVs referenced by the notebook
+uv run python scripts/prepare_simulation_data.py --target all
+
+# 3a) Reproducible CLI plotting (exp1.1/1.2/1.3 + exp2.1/2.2)
+uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper
+
+# 3b) Interactive notebook plotting (full paper plots)
 uv sync --extra notebook
-jupyter notebook notebook/
+jupyter notebook scripts/simulation_fig.ipynb
 ```
+
+For full mapping from matrix configs to generated CSV files and figure entry points, see
+[`docs/reproducibility.md`](docs/reproducibility.md).
 
 ## 📊 Visualization
 

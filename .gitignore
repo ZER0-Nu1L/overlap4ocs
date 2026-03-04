@@ -9,6 +9,7 @@ logs/
 archives/
 .claude/
 public/
+.backups/
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks
