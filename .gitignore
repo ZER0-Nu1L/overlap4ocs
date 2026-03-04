@@ -2,7 +2,11 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,visualstudiocode,pycharm,python,jupyternotebooks
 
 ### My Project ###
-figures/
+figures/**
+!figures/optimized_schedule.pdf
+!figures/optimized_schedule.png
+notebook/figures/
+scripts/figures/
 solution/
 test/
 logs/

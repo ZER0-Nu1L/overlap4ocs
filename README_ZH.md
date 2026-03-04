@@ -325,7 +325,7 @@ SWOT 生成显示以下内容的甘特图：
 
 示例输出可视化：
 
-![调度可视化](figures/optimized_schedule.pdf)
+![调度可视化](figures/optimized_schedule.png)
 *（显示优化重配置-传输重叠的甘特图）*
 
 ## 🛠️ 开发

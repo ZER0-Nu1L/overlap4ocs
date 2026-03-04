@@ -326,7 +326,7 @@ SWOT generates Gantt charts showing:
 
 Example output visualization:
 
-![Schedule Visualization](figures/optimized_schedule.pdf)
+![Schedule Visualization](figures/optimized_schedule.png)
 *(Gantt chart showing optimized reconfiguration-transmission overlap)*
 
 ## 🛠️ Development
