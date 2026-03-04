@@ -3,6 +3,8 @@
 
 ### My Project ###
 figures/**
+!figures/paper/
+!figures/paper/**
 !figures/optimized_schedule.pdf
 !figures/optimized_schedule.png
 notebook/figures/

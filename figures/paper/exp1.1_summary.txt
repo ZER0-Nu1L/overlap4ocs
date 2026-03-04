@@ -1,0 +1,13 @@
+exp1.1 summary
+
+Improvement vs One-shot:
+- rs_having-doubling: 0.0% to 84.0%
+- ar_having-doubling: 0.0% to 83.7%
+- a2a_pairwise: 0.0% to 83.8%
+- a2a_bruck: 0.0% to 89.7%
+
+Improvement vs Strawman:
+- rs_having-doubling: 0.0% to 89.1%
+- ar_having-doubling: -19.3% to 87.1%
+- a2a_pairwise: -15.3% to 89.1%
+- a2a_bruck: -18.4% to 85.4%
