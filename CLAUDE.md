@@ -59,11 +59,11 @@ For systematic parameter sweeps:
 ```bash
 # 1. Generate configurations from matrix spec
 PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
-  --matrix config/matrix/example_matrix.toml
+  --matrix config/matrix/examples/example_matrix_sweep_msg+k.toml
 
 # 2. Run the experiment matrix
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/example_matrix.toml
+  --matrix config/matrix/examples/example_matrix_sweep_msg+k.toml
 ```
 
 Matrix runner options:
@@ -167,7 +167,7 @@ Constraint categories (P1-P3 properties):
 
 **Matrix experiments** enable systematic parameter sweeps:
 
-1. **Matrix specification** (`config/matrix/*.toml`): Defines parameter grids
+1. **Matrix specification** (`config/matrix/paper/*.toml` and `config/matrix/examples/*.toml`): Defines parameter grids
    - `matrix_id`: Unique experiment identifier
    - `topology`: Network parameters (k, p, B, T_reconf, T_lat)
    - `message_sizes_mib`: List of message sizes to sweep

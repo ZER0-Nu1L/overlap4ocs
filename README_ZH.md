@@ -137,7 +137,7 @@ Improvement over baseline: 47%
 
 ```bash
 PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
-  --matrix config/matrix/example_matrix_sweep_msg+Tr.toml
+  --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml
 ```
 
 这将在 `logs/generated_configs/<matrix_id>/` 中创建单独的配置文件。
@@ -146,7 +146,7 @@ PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
 
 ```bash
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/example_matrix_sweep_msg+Tr.toml
+  --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml
 ```
 
 **选项：**
@@ -254,7 +254,9 @@ overlap4ocs/
 │   ├── program.toml            # 运行时配置
 │   ├── instance_parser.py      # 配置解析器
 │   ├── cc_algorithm.py         # 集体通信算法定义
-│   └── matrix/                 # 矩阵实验规范
+│   └── matrix/
+│       ├── paper/              # 论文复现实验使用的矩阵配置
+│       └── examples/           # 扩展扫描模板与历史示例
 ├── paradigm/
 │   ├── model_gurobi.py         # Gurobi MILP 建模
 │   ├── model_pulp.py           # PuLP MILP 建模
@@ -286,17 +288,17 @@ overlap4ocs/
 ```bash
 # 1) 执行矩阵实验
 for matrix in \
-  config/matrix/exp1.1-hd+bruck-1.toml \
-  config/matrix/exp1.1-pair-1.toml \
-  config/matrix/exp1.1-hd+bruck-2.toml \
-  config/matrix/exp1.1-pair-2.toml \
-  config/matrix/exp1.2-hd+bruck.toml \
-  config/matrix/exp1.2-pair.toml \
-  config/matrix/exp1.3-ar_rb.toml \
-  config/matrix/exp1.3-a2a_pair.toml \
-  config/matrix/exp1.3-a2a_bruck.toml \
-  config/matrix/example_matrix_sweep_msg+k-B.toml \
-  config/matrix/example_matrix_sweep_msg+Tr.toml; do
+  config/matrix/paper/exp1.1-hd+bruck-1.toml \
+  config/matrix/paper/exp1.1-pair-1.toml \
+  config/matrix/paper/exp1.1-hd+bruck-2.toml \
+  config/matrix/paper/exp1.1-pair-2.toml \
+  config/matrix/paper/exp1.2-hd+bruck.toml \
+  config/matrix/paper/exp1.2-pair.toml \
+  config/matrix/paper/exp1.3-ar_rb.toml \
+  config/matrix/paper/exp1.3-a2a_pair.toml \
+  config/matrix/paper/exp1.3-a2a_bruck.toml \
+  config/matrix/paper/example_matrix_sweep_msg+k-B.toml \
+  config/matrix/paper/example_matrix_sweep_msg+Tr.toml; do
   PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
 done
 
@@ -323,7 +325,7 @@ SWOT 生成显示以下内容的甘特图：
 
 示例输出可视化：
 
-![调度可视化](public/figures/example_schedule.png)
+![调度可视化](figures/optimized_schedule.pdf)
 *（显示优化重配置-传输重叠的甘特图）*
 
 ## 🛠️ 开发

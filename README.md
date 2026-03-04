@@ -137,7 +137,7 @@ For systematic parameter sweeps and reproducible research:
 
 ```bash
 PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
-  --matrix config/matrix/example_matrix_sweep_msg+Tr.toml
+  --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml
 ```
 
 This creates individual configuration files in `logs/generated_configs/<matrix_id>/`.
@@ -146,7 +146,7 @@ This creates individual configuration files in `logs/generated_configs/<matrix_i
 
 ```bash
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/example_matrix_sweep_msg+Tr.toml
+  --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml
 ```
 
 **Options:**
@@ -254,7 +254,9 @@ overlap4ocs/
 │   ├── program.toml            # Runtime configuration
 │   ├── instance_parser.py      # Configuration parser
 │   ├── cc_algorithm.py         # Collective algorithm definitions
-│   └── matrix/                 # Matrix experiment specifications
+│   └── matrix/
+│       ├── paper/              # Matrix specs used by paper reproduction
+│       └── examples/           # Extra sweep templates and historical examples
 ├── paradigm/
 │   ├── model_gurobi.py         # Gurobi MILP formulation
 │   ├── model_pulp.py           # PuLP MILP formulation
@@ -286,17 +288,17 @@ For direct reproducibility, use the scripted workflow below:
 ```bash
 # 1) Run matrix experiments
 for matrix in \
-  config/matrix/exp1.1-hd+bruck-1.toml \
-  config/matrix/exp1.1-pair-1.toml \
-  config/matrix/exp1.1-hd+bruck-2.toml \
-  config/matrix/exp1.1-pair-2.toml \
-  config/matrix/exp1.2-hd+bruck.toml \
-  config/matrix/exp1.2-pair.toml \
-  config/matrix/exp1.3-ar_rb.toml \
-  config/matrix/exp1.3-a2a_pair.toml \
-  config/matrix/exp1.3-a2a_bruck.toml \
-  config/matrix/example_matrix_sweep_msg+k-B.toml \
-  config/matrix/example_matrix_sweep_msg+Tr.toml; do
+  config/matrix/paper/exp1.1-hd+bruck-1.toml \
+  config/matrix/paper/exp1.1-pair-1.toml \
+  config/matrix/paper/exp1.1-hd+bruck-2.toml \
+  config/matrix/paper/exp1.1-pair-2.toml \
+  config/matrix/paper/exp1.2-hd+bruck.toml \
+  config/matrix/paper/exp1.2-pair.toml \
+  config/matrix/paper/exp1.3-ar_rb.toml \
+  config/matrix/paper/exp1.3-a2a_pair.toml \
+  config/matrix/paper/exp1.3-a2a_bruck.toml \
+  config/matrix/paper/example_matrix_sweep_msg+k-B.toml \
+  config/matrix/paper/example_matrix_sweep_msg+Tr.toml; do
   PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
 done
 
@@ -324,7 +326,7 @@ SWOT generates Gantt charts showing:
 
 Example output visualization:
 
-![Schedule Visualization](public/figures/example_schedule.png)
+![Schedule Visualization](figures/optimized_schedule.pdf)
 *(Gantt chart showing optimized reconfiguration-transmission overlap)*
 
 ## 🛠️ Development

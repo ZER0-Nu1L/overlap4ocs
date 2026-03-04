@@ -10,6 +10,11 @@ archives/
 .claude/
 public/
 .backups/
+scripts/commands.zsh
+
+# Keep paper matrix specs tracked
+!config/matrix/paper/
+!config/matrix/paper/*.toml
 
 ### JupyterNotebooks ###
 # gitignore template for Jupyter Notebooks

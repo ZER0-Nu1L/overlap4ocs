@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 Core execution starts in `main.py` and orchestration logic lives in `orchestrator.py`. Keep domain logic split by purpose:
-- `config/`: instance/program TOML parsing and collective algorithm definitions (`cc_algorithm.py`), plus matrix specs in `config/matrix/`.
+- `config/`: instance/program TOML parsing and collective algorithm definitions (`cc_algorithm.py`), plus matrix specs in `config/matrix/paper/` and `config/matrix/examples/`.
 - `paradigm/`: scheduling baselines, warm start logic, and MILP solvers (`model_gurobi.py`, `model_pulp.py`, `solver_wrapper.py`).
 - `utils/`: result extraction and plotting helpers.
 - `scripts/`: batch experiment tooling (`generate_matrix_configs.py`, `matrix_runner.py`, `matrix_archive.py`).
@@ -15,8 +15,8 @@ Use Python 3.10+ and `uv` by default.
 - `uv sync --extra gurobi`: add Gurobi support.
 - `uv sync --extra notebook`: add Jupyter tooling.
 - `uv run python main.py --config config/instance.toml`: run one optimization instance.
-- `PYTHONPATH=. uv run python scripts/generate_matrix_configs.py --matrix config/matrix/example_matrix_sweep_msg+Tr.toml`: generate sweep configs.
-- `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix config/matrix/example_matrix_sweep_msg+Tr.toml --limit 1`: quick batch smoke run.
+- `PYTHONPATH=. uv run python scripts/generate_matrix_configs.py --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml`: generate sweep configs.
+- `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml --limit 1`: quick batch smoke run.
 
 ## Coding Style & Naming Conventions
 Follow existing Python style: 4-space indentation, `snake_case` for modules/functions/variables, concise docstrings for public functions. Keep parameter names consistent with config keys (`k`, `p`, `m`, `T_reconf`, etc.). When changing optimization constraints, keep `model_gurobi.py` and `model_pulp.py` behavior aligned.

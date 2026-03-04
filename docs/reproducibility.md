@@ -2,7 +2,7 @@
 
 This repository has two layers for paper reproduction:
 
-1. **Raw experiment execution** via matrix specs in `config/matrix/*.toml`
+1. **Raw experiment execution** via matrix specs in `config/matrix/paper/*.toml`
 2. **Figure data preparation and plotting** via `scripts/prepare_simulation_data.py` and `scripts/simulation_fig.py`
 
 ## Prerequisites
@@ -15,21 +15,25 @@ uv sync --extra notebook
 
 ## End-to-End Workflow
 
+Matrix config layout:
+- `config/matrix/paper/`: matrix specs referenced by the paper reproducibility flow.
+- `config/matrix/examples/`: additional templates and historical sweep variants.
+
 ### 1) Run matrix experiments
 
 ```bash
 for matrix in \
-  config/matrix/exp1.1-hd+bruck-1.toml \
-  config/matrix/exp1.1-pair-1.toml \
-  config/matrix/exp1.1-hd+bruck-2.toml \
-  config/matrix/exp1.1-pair-2.toml \
-  config/matrix/exp1.2-hd+bruck.toml \
-  config/matrix/exp1.2-pair.toml \
-  config/matrix/exp1.3-ar_rb.toml \
-  config/matrix/exp1.3-a2a_pair.toml \
-  config/matrix/exp1.3-a2a_bruck.toml \
-  config/matrix/example_matrix_sweep_msg+k-B.toml \
-  config/matrix/example_matrix_sweep_msg+Tr.toml; do
+  config/matrix/paper/exp1.1-hd+bruck-1.toml \
+  config/matrix/paper/exp1.1-pair-1.toml \
+  config/matrix/paper/exp1.1-hd+bruck-2.toml \
+  config/matrix/paper/exp1.1-pair-2.toml \
+  config/matrix/paper/exp1.2-hd+bruck.toml \
+  config/matrix/paper/exp1.2-pair.toml \
+  config/matrix/paper/exp1.3-ar_rb.toml \
+  config/matrix/paper/exp1.3-a2a_pair.toml \
+  config/matrix/paper/exp1.3-a2a_bruck.toml \
+  config/matrix/paper/example_matrix_sweep_msg+k-B.toml \
+  config/matrix/paper/example_matrix_sweep_msg+Tr.toml; do
   PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
 done
 ```
@@ -38,7 +42,7 @@ Smoke run:
 
 ```bash
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/exp1.1-hd+bruck-1.toml --limit 1
+  --matrix config/matrix/paper/exp1.1-hd+bruck-1.toml --limit 1
 ```
 
 ### 2) Build notebook-ready merged CSVs
