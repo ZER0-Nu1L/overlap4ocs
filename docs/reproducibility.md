@@ -84,6 +84,14 @@ Scripted path (recommended for CI/reproducibility):
 uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper
 ```
 
+Important:
+- `scripts/simulation_fig.py` overwrites files with the same name under `figures/paper/`.
+- If you manually uploaded or curated files in `figures/paper/`, use a separate output directory, for example:
+
+```bash
+uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper_reproduce
+```
+
 This command generates:
 - `exp1.1-rs-hd.pdf`, `exp1.1-ar-hd.pdf`, `exp1.1-a2a-bruck.pdf`, `exp1.1-a2a-pair.pdf`
 - `exp1.2_ar_hd.pdf`, `exp1.2_a2a_bruck.pdf`, `exp1.2_a2a_pair.pdf`

@@ -78,6 +78,10 @@ Matrix runner options:
 - `--extra-args "..."`: Forward arguments to main.py
 - `--dry-run`: Create run folders without executing
 
+Paper figure output note:
+- `scripts/simulation_fig.py --output-dir figures/paper` overwrites files with the same names.
+- If `figures/paper` contains manually uploaded figures, write to a separate directory (for example `figures/paper_reproduce`).
+
 Recommended restart flow for long paper runs:
 1. Start with `--limit 1` smoke run.
 2. Run full matrix with `--resume --rerun-failed`.
@@ -161,7 +165,7 @@ Supported algorithms:
 
 ### MILP Model Structure
 
-The mathematical model is documented in `math_model.md`. Key decision variables:
+The mathematical model is documented in `docs/math_model.md`. Key decision variables:
 - `d[i,j]`: Data volume assigned to OCS j at step i
 - `u[i,j]`: Binary indicator if OCS j is used at step i
 - `r[i,j]`: Binary indicator if OCS j is reconfigured at step i
@@ -301,7 +305,7 @@ After optimization, if the final solution is worse than the warm start (can happ
 
 ## Important File Locations
 
-- Mathematical formulation: `math_model.md`
+- Mathematical formulation: `docs/math_model.md`
 - Parameter validation: `config/instance_parser.py`
 - Main solver interface: `paradigm/solver_wrapper.py`
 - Baseline/ideal/one-shot paradigms: `paradigm/baseline.py`, `paradigm/ideal.py`, `paradigm/one_shot.py`

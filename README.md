@@ -242,7 +242,7 @@ The SWOT scheduler formulates the joint optimization problem as a Mixed Integer 
 2. **P2 (No Overlapping Activities)**: An OCS cannot perform two activities simultaneously
 3. **P3 (Cross-Step Synchronization)**: Each step begins only after the previous step finishes
 
-See [`math_model.md`](math_model.md) for detailed mathematical formulation.
+See [`docs/math_model.md`](docs/math_model.md) for detailed mathematical formulation.
 
 ## 📁 Repository Structure
 
@@ -275,7 +275,9 @@ overlap4ocs/
 ├── utils/
 │   ├── scheduler_analysis.py   # Result extraction & visualization
 │   └── check_platform.py       # Platform detection
-├── math_model.md               # Mathematical formulation
+├── docs/
+│   ├── math_model.md           # Mathematical formulation
+│   └── reproducibility.md      # Reproducibility workflow
 ├── CLAUDE.md                   # Development guide
 └── README.md                   # This file
 ```
@@ -307,6 +309,10 @@ uv run python scripts/prepare_simulation_data.py --target all
 
 # 3a) Reproducible CLI plotting (exp1.1/1.2/1.3 + exp2.1/2.2)
 uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper
+
+# Note: this overwrites files with the same names under figures/paper.
+# If you keep manually uploaded paper figures there, use another directory:
+# uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper_reproduce
 
 # 3b) Interactive notebook plotting (full paper plots)
 uv sync --extra notebook

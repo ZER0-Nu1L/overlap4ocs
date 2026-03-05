@@ -18,6 +18,7 @@ Use Python 3.10+ and `uv` by default.
 - `PYTHONPATH=. uv run python scripts/generate_matrix_configs.py --matrix config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml`: generate sweep configs.
 - `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml --limit 1 --resume --heartbeat-sec 10`: quick batch smoke run.
 - `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix <matrix.toml> --resume --rerun-failed --heartbeat-sec 30`: long-run default with resumability and heartbeat.
+- `uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper_reproduce`: regenerate paper figures without overwriting manually uploaded files in `figures/paper/`.
 
 ## Coding Style & Naming Conventions
 Follow existing Python style: 4-space indentation, `snake_case` for modules/functions/variables, concise docstrings for public functions. Keep parameter names consistent with config keys (`k`, `p`, `m`, `T_reconf`, etc.). When changing optimization constraints, keep `model_gurobi.py` and `model_pulp.py` behavior aligned.
