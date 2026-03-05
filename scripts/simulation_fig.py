@@ -77,12 +77,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--exp21-csv",
-        default="logs/matrix_results-m32_sweep_msg+k-B.csv",
+        default="logs/matrix_results-exp2.1-matrix_sweep_msg+k-B.csv",
         help="CSV path for exp2.1 (impact of k/B)",
     )
     parser.add_argument(
         "--exp22-csv",
-        default="logs/matrix_results-m32_sweep_msg+Tr.csv",
+        default="logs/matrix_results-exp2.2-matrix_sweep_msg+Tr.csv",
         help="CSV path for exp2.2 (impact of T_reconf)",
     )
     parser.add_argument(
@@ -114,18 +114,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def maybe_alternate_csv(path: Path) -> Path:
-    if path.exists():
-        return path
-    # Compatibility with historical filename typo: +k-b vs +k-B.
-    name = path.name
-    if "+k-B" in name:
-        alt = path.with_name(name.replace("+k-B", "+k-b"))
-        if alt.exists():
-            return alt
-    if "+k-b" in name:
-        alt = path.with_name(name.replace("+k-b", "+k-B"))
-        if alt.exists():
-            return alt
     return path
 
 

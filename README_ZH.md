@@ -137,7 +137,7 @@ Improvement over baseline: 47%
 
 ```bash
 PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
-  --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml
+  --matrix config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml
 ```
 
 这将在 `logs/generated_configs/<matrix_id>/` 中创建单独的配置文件。
@@ -146,7 +146,7 @@ PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
 
 ```bash
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml
+  --matrix config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml
 ```
 
 **选项：**
@@ -178,7 +178,7 @@ logs/runs/<timestamp>_<config_name>/
 
 ```bash
 uv run python scripts/matrix_archive.py \
-  --matrix-id example_matrix_sweep_msg+Tr \
+  --matrix-id exp2.2-matrix_sweep_msg+Tr \
   --cleanup
 ```
 
@@ -297,8 +297,8 @@ for matrix in \
   config/matrix/paper/exp1.3-ar_rb.toml \
   config/matrix/paper/exp1.3-a2a_pair.toml \
   config/matrix/paper/exp1.3-a2a_bruck.toml \
-  config/matrix/paper/example_matrix_sweep_msg+k-B.toml \
-  config/matrix/paper/example_matrix_sweep_msg+Tr.toml; do
+  config/matrix/paper/exp2.1-matrix_sweep_msg+k-B.toml \
+  config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml; do
   PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
 done
 
