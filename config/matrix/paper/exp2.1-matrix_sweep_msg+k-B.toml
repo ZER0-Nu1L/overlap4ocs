@@ -1,4 +1,4 @@
-matrix_id = "m32_sweep_msg+k-B"
+matrix_id = "exp2.1-matrix_sweep_msg+k-B"
 
 solver = "pulp"
 solver_gap = 0.05
@@ -25,5 +25,5 @@ T_reconf = 0.2
 T_lat = 0.02
 
 [output]
-config_dir  = "logs/generated_configs/m32_sweep_msg+k-B"
-results_csv = "logs/matrix_results-m32_sweep_msg+k-B.csv"
+config_dir  = "logs/generated_configs/exp2.1-matrix_sweep_msg+k-B"
+results_csv = "logs/matrix_results-exp2.1-matrix_sweep_msg+k-B.csv"
