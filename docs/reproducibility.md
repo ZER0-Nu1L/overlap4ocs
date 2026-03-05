@@ -32,9 +32,13 @@ for matrix in \
   config/matrix/paper/exp1.3-ar_rb.toml \
   config/matrix/paper/exp1.3-a2a_pair.toml \
   config/matrix/paper/exp1.3-a2a_bruck.toml \
-  config/matrix/paper/example_matrix_sweep_msg+k-B.toml \
-  config/matrix/paper/example_matrix_sweep_msg+Tr.toml; do
-  PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix "$matrix"
+  config/matrix/paper/exp2.1-matrix_sweep_msg+k-B.toml \
+  config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml; do
+  PYTHONPATH=. uv run python scripts/matrix_runner.py \
+    --matrix "$matrix" \
+    --resume \
+    --rerun-failed \
+    --heartbeat-sec 30
 done
 ```
 
@@ -42,8 +46,23 @@ Smoke run:
 
 ```bash
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/paper/exp1.1-hd+bruck-1.toml --limit 1
+  --matrix config/matrix/paper/exp1.1-hd+bruck-1.toml \
+  --limit 1 \
+  --resume \
+  --heartbeat-sec 10
 ```
+
+Resume/recovery recommendations:
+- Keep `--resume` enabled (default) for long runs; avoid `--no-resume` unless intentionally rebuilding CSVs.
+- Add `--rerun-failed` when restarting interrupted batches.
+- Use `--limit N` for phased execution or smoke validation before full sweeps.
+- Keep heartbeat logs visible with `--heartbeat-sec` (set `0` to disable).
+
+Runtime observability:
+- Matrix progress snapshots are written to `logs/repro/<matrix_id>_progress.json`.
+- Quick status checks:
+  - `wc -l logs/matrix_results-*.csv`
+  - `tail -n 20 logs/repro/*_progress.json`
 
 ### 2) Build notebook-ready merged CSVs
 
@@ -94,6 +113,6 @@ uv run jupyter notebook scripts/simulation_fig.ipynb
   - Plot tool: `scripts/simulation_fig.py` or notebook  
     Note: historical `results-exp1.3-a2a-9.csv` may contain `p=8`; CLI script auto-falls back to available `(p,k,B)`.
 - **Exp 2.x**:
-  - Matrix specs: `example_matrix_sweep_msg+k-B.toml`, `example_matrix_sweep_msg+Tr.toml`
-  - CSV: `logs/matrix_results-m32_sweep_msg+k-B.csv`, `logs/matrix_results-m32_sweep_msg+Tr.csv`
+  - Matrix specs: `exp2.1-matrix_sweep_msg+k-B.toml`, `exp2.2-matrix_sweep_msg+Tr.toml`
+  - CSV: `logs/matrix_results-exp2.1-matrix_sweep_msg+k-B.csv`, `logs/matrix_results-exp2.2-matrix_sweep_msg+Tr.csv`
   - Plot tool: `scripts/simulation_fig.py` or notebook

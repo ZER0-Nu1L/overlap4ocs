@@ -63,14 +63,26 @@ PYTHONPATH=. uv run python scripts/generate_matrix_configs.py \
 
 # 2. Run the experiment matrix
 PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/examples/example_matrix_sweep_msg+k.toml
+  --matrix config/matrix/examples/example_matrix_sweep_msg+k.toml \
+  --resume \
+  --rerun-failed \
+  --heartbeat-sec 30
 ```
 
 Matrix runner options:
 - `--limit N`: Run only N configs per pass
+- `--resume` / `--no-resume`: Reuse or ignore existing matrix CSV state
 - `--rerun-failed`: Re-execute previously failed runs
+- `--heartbeat-sec N`: Print periodic liveness/progress updates while each run is solving
+- `--progress-file <path>`: Persist live run status as JSON (default: `logs/repro/<matrix_id>_progress.json`)
 - `--extra-args "..."`: Forward arguments to main.py
 - `--dry-run`: Create run folders without executing
+
+Recommended restart flow for long paper runs:
+1. Start with `--limit 1` smoke run.
+2. Run full matrix with `--resume --rerun-failed`.
+3. If interrupted, rerun the exact same command; completed hashes will be skipped.
+4. Track progress via heartbeats and `logs/repro/<matrix_id>_progress.json`.
 
 ### Running Scripts
 
@@ -180,7 +192,7 @@ Constraint categories (P1-P3 properties):
    - Creates isolated run directories: `logs/runs/<timestamp>_<config_name>/`
    - Each run directory contains: `config/`, `figures/`, `solution/`, `run.log`, `metrics.json`, `metadata.json`
    - Appends results to `logs/matrix_results.csv` with fields: timestamp, matrix_id, algorithm, message_size, network params, solve time, CCT values, improvement percentages
-   - Supports resume (`--resume`), failure retry (`--rerun-failed`), and partial execution (`--limit`)
+   - Supports resume (`--resume`), failure retry (`--rerun-failed`), partial execution (`--limit`), periodic heartbeats (`--heartbeat-sec`), and JSON progress snapshots (`--progress-file`)
 
 4. **scripts/matrix_archive.py**: Archive completed matrix experiments to `logs/archive/`
 

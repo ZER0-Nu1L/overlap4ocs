@@ -15,8 +15,9 @@ Use Python 3.10+ and `uv` by default.
 - `uv sync --extra gurobi`: add Gurobi support.
 - `uv sync --extra notebook`: add Jupyter tooling.
 - `uv run python main.py --config config/instance.toml`: run one optimization instance.
-- `PYTHONPATH=. uv run python scripts/generate_matrix_configs.py --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml`: generate sweep configs.
-- `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix config/matrix/paper/example_matrix_sweep_msg+Tr.toml --limit 1`: quick batch smoke run.
+- `PYTHONPATH=. uv run python scripts/generate_matrix_configs.py --matrix config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml`: generate sweep configs.
+- `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml --limit 1 --resume --heartbeat-sec 10`: quick batch smoke run.
+- `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix <matrix.toml> --resume --rerun-failed --heartbeat-sec 30`: long-run default with resumability and heartbeat.
 
 ## Coding Style & Naming Conventions
 Follow existing Python style: 4-space indentation, `snake_case` for modules/functions/variables, concise docstrings for public functions. Keep parameter names consistent with config keys (`k`, `p`, `m`, `T_reconf`, etc.). When changing optimization constraints, keep `model_gurobi.py` and `model_pulp.py` behavior aligned.
@@ -26,6 +27,7 @@ There is no dedicated `tests/` suite yet. Use reproducible smoke checks:
 1. Run a single instance via `main.py`.
 2. Run a limited matrix job (`--limit 1`) to validate script orchestration.
 3. Confirm new outputs under `logs/runs/...` and expected PDFs/JSON artifacts.
+4. For long matrix runs, check live progress via `logs/repro/<matrix_id>_progress.json`.
 Include exact command lines used in PR descriptions.
 
 ## Commit & Pull Request Guidelines
