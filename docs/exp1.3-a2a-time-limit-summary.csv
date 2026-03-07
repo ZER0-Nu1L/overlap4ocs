@@ -1,0 +1,17 @@
+## Pairwise-Only Summary
+t,mean_improve_pct,median_improve_pct,m0.25_gap_vs_t3000_pct,m0.5_gap_vs_t3000_pct
+200,4.02,0.89,154.04,124.56
+600,43.19,52.98,154.04,124.56
+900,53.61,59.02,-3.39,-1.77
+1200,53.43,56.80,1.01,8.25
+1500,54.08,58.08,-2.27,-11.07
+3000,46.41,55.79,0.00,0.00
+
+## Mixed (Pairwise + Bruck@120) Summary
+t,pairwise_selected,bruck_selected,mean_gain_vs_best_known_pct
+200,0,13,19.82
+600,0,13,19.82
+900,0,13,19.82
+1200,0,13,19.82
+1500,0,13,19.82
+3000,0,13,19.82
