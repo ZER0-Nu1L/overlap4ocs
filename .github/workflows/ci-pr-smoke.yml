@@ -1,0 +1,74 @@
+name: CI PR Smoke
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-pr-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
+      MPLBACKEND: Agg
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install CBC solver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y coinor-cbc
+
+      - name: Install dependencies (locked)
+        run: uv sync --frozen --extra notebook
+
+      - name: Compile-check Python modules
+        run: |
+          uv run python -m py_compile \
+            main.py orchestrator.py \
+            scripts/*.py paradigm/*.py config/*.py utils/*.py
+
+      - name: Single-instance smoke
+        run: uv run python main.py --config config/instance.toml
+
+      - name: Matrix smoke (exp1.1 + exp2.x)
+        run: |
+          for matrix in \
+            config/matrix/paper/exp1.1-hd+bruck-1.toml \
+            config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml; do
+            PYTHONPATH=. uv run python scripts/matrix_runner.py \
+              --matrix "$matrix" \
+              --limit 1 \
+              --resume \
+              --heartbeat-sec 10
+          done
+
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs-${{ github.run_id }}
+          retention-days: 7
+          path: |
+            logs/repro/*.json
+            logs/matrix_results-*.csv
+            logs/runs/**/run.log

@@ -33,6 +33,11 @@ For CI/sandbox portability:
 - `MPLBACKEND=Agg`
 - Write figure outputs to non-manual path (for example `figures/paper_reproduce`).
 
+CI workflow tiers in this repo:
+- `.github/workflows/ci-pr-smoke.yml`: fast PR gate (compile + single run + `--limit 1` matrix smoke).
+- `.github/workflows/repro-lite.yml`: scheduled/manual light reproducibility run with artifact upload.
+- `.github/workflows/repro-full.yml`: manual full reproduction (long-running, non-blocking).
+
 ## Coding Style & Naming Conventions
 Follow existing Python style: 4-space indentation, `snake_case` for modules/functions/variables, concise docstrings for public functions. Keep parameter names consistent with config keys (`k`, `p`, `m`, `T_reconf`, etc.). When changing optimization constraints, keep `model_gurobi.py` and `model_pulp.py` behavior aligned.
 

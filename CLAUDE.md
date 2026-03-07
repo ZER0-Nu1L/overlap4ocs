@@ -32,6 +32,12 @@ pip install -r requirements.txt
 
 ## Running the Code
 
+### GitHub Actions CI Profiles
+
+- `.github/workflows/ci-pr-smoke.yml`: fast pull-request gate (compile + single-instance + limited matrix smoke).
+- `.github/workflows/repro-lite.yml`: scheduled/manual lite reproducibility run across all experiment families with limited sample size.
+- `.github/workflows/repro-full.yml`: manual full reproducibility pipeline (long-running, non-blocking for PRs).
+
 ### Single Instance Execution
 
 Run a single optimization instance:

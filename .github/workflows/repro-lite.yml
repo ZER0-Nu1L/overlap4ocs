@@ -1,0 +1,85 @@
+name: Repro Lite
+
+on:
+  schedule:
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repro-lite
+  cancel-in-progress: true
+
+jobs:
+  repro-lite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      UV_CACHE_DIR: ${{ github.workspace }}/.uv-cache
+      MPLBACKEND: Agg
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install CBC solver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y coinor-cbc
+
+      - name: Install dependencies (locked)
+        run: uv sync --frozen --extra notebook
+
+      - name: Run repro-lite matrix subset
+        run: |
+          for matrix in \
+            config/matrix/paper/exp1.1-hd+bruck-1.toml \
+            config/matrix/paper/exp1.2-hd+bruck.toml \
+            config/matrix/paper/exp1.3-ar_rb.toml \
+            config/matrix/paper/exp1.3-a2a_pair.toml \
+            config/matrix/paper/exp1.3-a2a_bruck.toml \
+            config/matrix/paper/exp2.1-matrix_sweep_msg+k-B.toml \
+            config/matrix/paper/exp2.2-matrix_sweep_msg+Tr.toml; do
+            limit=2
+            if [ "$matrix" = "config/matrix/paper/exp1.3-a2a_pair.toml" ]; then
+              limit=1
+            fi
+            base="$(basename "$matrix" .toml)"
+            PYTHONPATH=. uv run python scripts/matrix_runner.py \
+              --matrix "$matrix" \
+              --limit "$limit" \
+              --resume \
+              --rerun-failed \
+              --heartbeat-sec 30 \
+              --progress-file "logs/repro/${base}_progress.json"
+          done
+
+      - name: Prepare merged CSVs
+        run: uv run python scripts/prepare_simulation_data.py --target all
+
+      - name: Generate paper figures (safe output dir)
+        run: uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper_reproduce
+
+      - name: Upload repro-lite artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repro-lite-${{ github.run_id }}
+          retention-days: 14
+          path: |
+            logs/repro/*.json
+            logs/matrix_results-*.csv
+            logs/results-*.csv
+            figures/paper_reproduce/*.pdf
+            figures/paper_reproduce/*.md

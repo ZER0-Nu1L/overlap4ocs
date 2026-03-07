@@ -20,6 +20,23 @@ uv sync --extra notebook
 - Full paper reproduction is workload-dependent and can range from tens of minutes to hours.
 - Solver branch-and-bound variance can cause runtime differences across hosts and runs.
 
+## GitHub Actions Profiles
+
+The repository includes three CI profiles under `.github/workflows/`:
+
+- `ci-pr-smoke.yml`:
+  - Trigger: `pull_request`, `push` to `main`
+  - Scope: compile-check + single-instance run + matrix smoke (`--limit 1`)
+  - Target runtime: short, used as merge gate
+- `repro-lite.yml`:
+  - Trigger: weekly schedule + manual
+  - Scope: limited subset across Exp1.1/1.2/1.3/2.x, then `prepare_simulation_data.py` and `simulation_fig.py`
+  - Output: artifacts in `figures/paper_reproduce` and `logs/*.csv/json`
+- `repro-full.yml`:
+  - Trigger: manual only (`workflow_dispatch`)
+  - Scope: full matrix suite from this guide, resumable with heartbeat/progress files
+  - Usage: long-running paper-grade reproduction (do not use as PR gate)
+
 ## End-to-End Workflow
 
 Matrix config layout:
