@@ -150,9 +150,18 @@ PYTHONPATH=. uv run python scripts/matrix_runner.py \
   - Plot tool: `scripts/simulation_fig.py` or notebook
 - **Exp 1.3**:
   - Matrix specs: `exp1.3-ar_rb.toml`, `exp1.3-a2a_pair.toml`, `exp1.3-a2a_bruck.toml`
-  - Prepared CSV: `logs/results-exp1.3-ar.csv`, `logs/results-exp1.3-a2a*.csv`
-  - Plot tool: `scripts/simulation_fig.py` or notebook  
-    Note: historical `results-exp1.3-a2a-9.csv` may contain `p=8`; CLI script auto-falls back to available `(p,k,B)`.
+  - Prepared CSV:
+    - `logs/results-exp1.3-ar.csv` (`p=256`, End-to-End Primitive Performance / AR): merged from
+      - `exp1.3` recursive-doubling rows (`matrix_results-exp1.3-ar.csv`)
+      - `exp1.1` halving-doubling rows filtered by `p=256, k=8, B=12.5, T_reconf=0.2, T_lat=0.02`
+      - analytical baselines (`ar_ring`, `ar_dbt`, `ar_dbt_pipe`)
+    - `logs/results-exp1.3-a2a.csv` (`p=256`, End-to-End Primitive Performance / A2A): merged from
+      - `exp1.3` pairwise rows (`matrix_results-exp1.3-a2a.csv`)
+      - `exp1.1` bruck rows filtered by `p=256, k=8, B=12.5, T_reconf=0.2, T_lat=0.02`
+    - `logs/results-exp1.3-a2a-9.csv` (`p=9`): from `matrix_results-exp1.3-a2a-9.csv`
+  - Plot tool: `scripts/simulation_fig.py` or notebook
+  - Coupling rationale: reuse of compatible `exp1.1` baselines (`ar_having-doubling`, `a2a_bruck`) reduces duplicate compute and keeps cross-figure baseline consistency.
+  - Correctness condition: if exp1.3 topology/runtime defaults change, regenerate compatible exp1.1 baseline rows (or switch to direct exp1.3 matrices at matching topology) before plotting.
 - **Exp 2.x**:
   - Matrix specs: `exp2.1-matrix_sweep_msg+k-B.toml`, `exp2.2-matrix_sweep_msg+Tr.toml`
   - CSV: `logs/matrix_results-exp2.1-matrix_sweep_msg+k-B.csv`, `logs/matrix_results-exp2.2-matrix_sweep_msg+Tr.csv`

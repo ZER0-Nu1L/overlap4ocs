@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Prepare reproducible CSV inputs for paper figure generation."""
+
 from __future__ import annotations
 
 import argparse
@@ -39,7 +40,21 @@ CSV_HEADER = [
     "hash",
 ]
 
-EXP13_MSG_SIZES_MIB = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0, 256.0, 512.0]
+EXP13_MSG_SIZES_MIB = [
+    0.125,
+    0.25,
+    0.5,
+    1.0,
+    2.0,
+    4.0,
+    8.0,
+    16.0,
+    32.0,
+    64.0,
+    128.0,
+    256.0,
+    512.0,
+]
 
 
 def parse_args() -> argparse.Namespace:
@@ -52,7 +67,11 @@ def parse_args() -> argparse.Namespace:
         default="all",
         help="Which dataset to prepare",
     )
-    parser.add_argument("--logs-dir", default="logs", help="Directory containing matrix result CSV files")
+    parser.add_argument(
+        "--logs-dir",
+        default="logs",
+        help="Directory containing matrix result CSV files",
+    )
     parser.add_argument(
         "--allow-missing",
         action="store_true",
@@ -80,7 +99,18 @@ def load_csv(path: Path, allow_missing: bool = False) -> pd.DataFrame:
 
 def normalize_types(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
-    for col in ("message_mib", "k", "B", "p", "T_reconf", "T_lat", "optimized_cct", "baseline_cct", "oneshot_cct", "ideal_cct"):
+    for col in (
+        "message_mib",
+        "k",
+        "B",
+        "p",
+        "T_reconf",
+        "T_lat",
+        "optimized_cct",
+        "baseline_cct",
+        "oneshot_cct",
+        "ideal_cct",
+    ):
         out[col] = pd.to_numeric(out[col], errors="coerce")
     return out
 
@@ -91,7 +121,9 @@ def dedupe_and_sort(df: pd.DataFrame) -> pd.DataFrame:
         return out
     if "hash" in out.columns:
         out = out.dropna(subset=["hash"]).drop_duplicates(subset=["hash"], keep="last")
-    out = out.sort_values(by=["algorithm", "k", "p", "B", "message_mib", "timestamp"], kind="stable")
+    out = out.sort_values(
+        by=["algorithm", "k", "p", "B", "message_mib", "timestamp"], kind="stable"
+    )
     return out.reset_index(drop=True)
 
 
@@ -142,14 +174,24 @@ def nccl_optimal_k(message_size_mib: float, p: int) -> int:
     return chunk_num
 
 
-def calc_dbt(msg_size_mib: float, chunk_num: int, p: int, k: int, B: float, T_reconf: float, T_lat: float) -> float:
+def calc_dbt(
+    msg_size_mib: float,
+    chunk_num: int,
+    p: int,
+    k: int,
+    B: float,
+    T_reconf: float,
+    T_lat: float,
+) -> float:
     chunk_size_mib = msg_size_mib / chunk_num
     steps = 2 * math.ceil(math.log2(p)) + 2 * (chunk_num - 1)
     time_per_step = T_lat + (chunk_size_mib / 2) / k / B
     return T_reconf + steps * time_per_step
 
 
-def calc_dbt_time(m_mib: float, chunk_num: int, p: int, B: float, T_reconf: float, T_lat: float) -> float:
+def calc_dbt_time(
+    m_mib: float, chunk_num: int, p: int, B: float, T_reconf: float, T_lat: float
+) -> float:
     n_chunks = chunk_num
     chunk_size = m_mib / n_chunks
     steps = 2 * math.ceil(math.log2(p)) + 2 * (n_chunks - 1)
@@ -161,12 +203,24 @@ def compute_row_hash(row: dict) -> str:
     # Keep deterministic hash independent from runtime timestamp.
     key = "|".join(
         str(row.get(name, ""))
-        for name in ("algorithm", "message_mib", "k", "p", "B", "T_reconf", "T_lat", "optimized_cct", "solver")
+        for name in (
+            "algorithm",
+            "message_mib",
+            "k",
+            "p",
+            "B",
+            "T_reconf",
+            "T_lat",
+            "optimized_cct",
+            "solver",
+        )
     )
     return hashlib.sha1(key.encode()).hexdigest()
 
 
-def build_analytical_exp13_ar_rows(k: int, p: int, B: float, T_reconf: float, T_lat: float) -> pd.DataFrame:
+def build_analytical_exp13_ar_rows(
+    k: int, p: int, B: float, T_reconf: float, T_lat: float
+) -> pd.DataFrame:
     rows = []
     ts = datetime.now().isoformat(timespec="seconds")
 
@@ -174,12 +228,21 @@ def build_analytical_exp13_ar_rows(k: int, p: int, B: float, T_reconf: float, T_
         t_ar_ring = T_reconf + (p - 1) * T_lat + m / k / B * (p - 1) / p
         t_ar_dbt = calc_dbt(m, p, p, k, B, T_reconf, T_lat)
 
-        _ = nccl_optimal_k(m, p)  # Keep notebook-equivalent path explicit, even if final value uses brute-force min.
+        _ = nccl_optimal_k(
+            m, p
+        )  # Keep notebook-equivalent path explicit, even if final value uses brute-force min.
         chunk_num_candidates = [2**i for i in range(0, int(math.log2(p)) + 1)]
-        times = [calc_dbt_time(m, chunk_num, p, B, T_reconf, T_lat) for chunk_num in chunk_num_candidates]
+        times = [
+            calc_dbt_time(m, chunk_num, p, B, T_reconf, T_lat)
+            for chunk_num in chunk_num_candidates
+        ]
         t_ar_dbt_pipe = float(times[int(np.argmin(times))])
 
-        for alg, cct in (("ar_ring", t_ar_ring), ("ar_dbt", t_ar_dbt), ("ar_dbt_pipe", t_ar_dbt_pipe)):
+        for alg, cct in (
+            ("ar_ring", t_ar_ring),
+            ("ar_dbt", t_ar_dbt),
+            ("ar_dbt_pipe", t_ar_dbt_pipe),
+        ):
             row = {
                 "timestamp": ts,
                 "matrix_id": f"exp1.3-{alg.replace('_', '-')}",
@@ -211,29 +274,58 @@ def build_analytical_exp13_ar_rows(k: int, p: int, B: float, T_reconf: float, T_
 
 
 def prepare_exp13_ar(logs_dir: Path, exp11_path: Path, allow_missing: bool) -> Path:
-    ar_matrix = load_csv(logs_dir / "matrix_results-exp1.3-ar.csv", allow_missing=allow_missing)
+    ar_matrix = load_csv(
+        logs_dir / "matrix_results-exp1.3-ar.csv", allow_missing=allow_missing
+    )
     exp11_df = load_csv(exp11_path, allow_missing=allow_missing)
 
     ar_matrix = normalize_types(ar_matrix)
     exp11_df = normalize_types(exp11_df)
 
-    ar_rb = ar_matrix[(ar_matrix["status"] == "success") & (ar_matrix["algorithm"] == "ar_recursive-doubling")]
+    ar_rb = ar_matrix[
+        (ar_matrix["status"] == "success")
+        & (ar_matrix["algorithm"] == "ar_recursive-doubling")
+    ]
     ar_hd = exp11_df[
         (exp11_df["status"] == "success")
         & (exp11_df["algorithm"] == "ar_having-doubling")
         & (exp11_df["k"] == 8)
         & (exp11_df["p"] == 256)
         & (np.isclose(exp11_df["B"], 12.5))
+        & (np.isclose(exp11_df["T_reconf"], 0.2))
+        & (np.isclose(exp11_df["T_lat"], 0.02))
     ]
 
-    analytical = build_analytical_exp13_ar_rows(k=8, p=256, B=12.5, T_reconf=0.2, T_lat=0.02)
-    merged = pd.concat([ensure_columns(ar_rb), ensure_columns(ar_hd), analytical], ignore_index=True)
+    # Exp1.3 AR intentionally reuses Exp1.1 HD rows at matching topology/runtime
+    # to avoid duplicate compute while keeping cross-figure baselines consistent.
+    if not allow_missing:
+        if ar_rb.empty:
+            raise ValueError(
+                "Missing exp1.3 ar_recursive-doubling rows for p=256, k=8, B=12.5."
+            )
+        if ar_hd.empty:
+            raise ValueError(
+                "Missing exp1.1 ar_having-doubling rows for p=256, k=8, B=12.5, T_reconf=0.2, T_lat=0.02."
+            )
+
+    analytical = build_analytical_exp13_ar_rows(
+        k=8, p=256, B=12.5, T_reconf=0.2, T_lat=0.02
+    )
+    merged = pd.concat(
+        [ensure_columns(ar_rb), ensure_columns(ar_hd), analytical], ignore_index=True
+    )
     return write_csv(merged, logs_dir / "results-exp1.3-ar.csv")
 
 
-def prepare_exp13_a2a(logs_dir: Path, exp11_path: Path, allow_missing: bool) -> tuple[Path, Path]:
-    pair_256 = load_csv(logs_dir / "matrix_results-exp1.3-a2a.csv", allow_missing=allow_missing)
-    bruck_9 = load_csv(logs_dir / "matrix_results-exp1.3-a2a-9.csv", allow_missing=allow_missing)
+def prepare_exp13_a2a(
+    logs_dir: Path, exp11_path: Path, allow_missing: bool
+) -> tuple[Path, Path]:
+    pair_256 = load_csv(
+        logs_dir / "matrix_results-exp1.3-a2a.csv", allow_missing=allow_missing
+    )
+    bruck_9 = load_csv(
+        logs_dir / "matrix_results-exp1.3-a2a-9.csv", allow_missing=allow_missing
+    )
     exp11_df = load_csv(exp11_path, allow_missing=allow_missing)
 
     pair_256 = normalize_types(pair_256)
@@ -253,14 +345,32 @@ def prepare_exp13_a2a(logs_dir: Path, exp11_path: Path, allow_missing: bool) -> 
         & (exp11_df["k"] == 8)
         & (exp11_df["p"] == 256)
         & (np.isclose(exp11_df["B"], 12.5))
+        & (np.isclose(exp11_df["T_reconf"], 0.2))
+        & (np.isclose(exp11_df["T_lat"], 0.02))
     ]
-    bruck_9_success = bruck_9[(bruck_9["status"] == "success") & (bruck_9["algorithm"] == "a2a_bruck")]
+    bruck_9_success = bruck_9[
+        (bruck_9["status"] == "success") & (bruck_9["algorithm"] == "a2a_bruck")
+    ]
+
+    # Exp1.3 A2A (p=256) intentionally reuses Exp1.1 Bruck rows to avoid duplicate
+    # runs. Enforce basic consistency checks so the merged curve remains valid.
+    if not allow_missing:
+        if pair_success.empty:
+            raise ValueError("Missing exp1.3 a2a_pairwise rows for p=256, k=8, B=12.5.")
+        if bruck_256.empty:
+            raise ValueError(
+                "Missing exp1.1 a2a_bruck rows for p=256, k=8, B=12.5, T_reconf=0.2, T_lat=0.02."
+            )
 
     out_256 = write_csv(
-        pd.concat([ensure_columns(pair_success), ensure_columns(bruck_256)], ignore_index=True),
+        pd.concat(
+            [ensure_columns(pair_success), ensure_columns(bruck_256)], ignore_index=True
+        ),
         logs_dir / "results-exp1.3-a2a.csv",
     )
-    out_9 = write_csv(ensure_columns(bruck_9_success), logs_dir / "results-exp1.3-a2a-9.csv")
+    out_9 = write_csv(
+        ensure_columns(bruck_9_success), logs_dir / "results-exp1.3-a2a-9.csv"
+    )
     return out_256, out_9
 
 

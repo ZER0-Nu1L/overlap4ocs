@@ -307,6 +307,12 @@ done
 # 2) Build merged CSVs referenced by the notebook
 uv run python scripts/prepare_simulation_data.py --target all
 
+# Note: exp1.3 merged CSVs intentionally reuse compatible exp1.1 baselines:
+# - exp1.3_ar: exp1.3 recursive-doubling + exp1.1 halving-doubling + analytical AR baselines
+# - exp1.3_a2a_256: exp1.3 pairwise + exp1.1 bruck
+# (all reused rows are filtered by matching topology/runtime)
+# This reduces duplicate compute while preserving consistent comparison baselines.
+
 # 3a) Reproducible CLI plotting (exp1.1/1.2/1.3 + exp2.1/2.2)
 uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper
 

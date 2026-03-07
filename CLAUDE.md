@@ -222,6 +222,13 @@ Constraint categories (P1-P3 properties):
 
 4. **scripts/matrix_archive.py**: Archive completed matrix experiments to `logs/archive/`
 
+5. **scripts/prepare_simulation_data.py**: Build merged CSVs for paper plotting
+   - Exp1.3 (End-to-End Primitive Performance) intentionally reuses compatible Exp1.1 baselines:
+     - AR: `results-exp1.3-ar.csv` = exp1.3 recursive-doubling + exp1.1 halving-doubling (matching topology/runtime) + analytical AR baselines
+     - A2A: `results-exp1.3-a2a.csv` = exp1.3 pairwise + exp1.1 bruck (matching topology/runtime)
+   - Rationale: reduce duplicate compute and keep cross-figure baseline consistency.
+   - Correctness requirement: if exp1.3 topology/runtime defaults change, regenerate compatible Exp1.1 baseline rows (or switch to direct exp1.3 matrices at matching topology) before plotting.
+
 ### Output Structure
 
 - **figures/**: Gantt chart PDFs showing OCS reconfiguration and transmission timelines
