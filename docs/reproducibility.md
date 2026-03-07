@@ -13,6 +13,13 @@ uv sync --extra notebook
 
 `--extra notebook` is required because figure scripts use `pandas`/`numpy`/`matplotlib`.
 
+
+## Runtime Expectations
+
+- Start with a smoke run (`--limit 1`) first; this is usually a few minutes.
+- Full paper reproduction is workload-dependent and can range from tens of minutes to hours.
+- Solver branch-and-bound variance can cause runtime differences across hosts and runs.
+
 ## End-to-End Workflow
 
 Matrix config layout:
@@ -103,6 +110,32 @@ Notebook path (for interactive editing):
 
 ```bash
 uv run jupyter notebook scripts/simulation_fig.ipynb
+```
+
+
+## CI / Sandbox Reproducibility Notes
+
+To reduce environment coupling in CI/sandbox environments:
+
+- Prefer `uv sync --frozen` to keep dependencies pinned to `uv.lock`.
+- Keep cache inside workspace (avoid HOME permission coupling):
+  - `export UV_CACHE_DIR="$PWD/.uv-cache"`
+- Use headless plotting backend:
+  - `export MPLBACKEND=Agg`
+- Keep matrix runs resumable:
+  - `--resume --rerun-failed --heartbeat-sec 30`
+- Preserve manually curated figures by writing to a separate output directory:
+  - `--output-dir figures/paper_reproduce`
+
+CI-friendly matrix command template:
+
+```bash
+export UV_CACHE_DIR="$PWD/.uv-cache"
+export MPLBACKEND=Agg
+
+PYTHONPATH=. uv run python scripts/matrix_runner.py \
+  --matrix <config/matrix/paper/*.toml> \
+  --resume --rerun-failed --heartbeat-sec 30
 ```
 
 ## Data Dependency Map

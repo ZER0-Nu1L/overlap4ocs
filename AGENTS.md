@@ -20,6 +20,19 @@ Use Python 3.10+ and `uv` by default.
 - `PYTHONPATH=. uv run python scripts/matrix_runner.py --matrix <matrix.toml> --resume --rerun-failed --heartbeat-sec 30`: long-run default with resumability and heartbeat.
 - `uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper_reproduce`: regenerate paper figures without overwriting manually uploaded files in `figures/paper/`.
 
+
+## Reproducibility Defaults
+Use matrix-file defaults for paper reproducibility; avoid ad-hoc solver-time overrides unless explicitly doing a solver study.
+
+For long runs, keep resumability and liveness:
+- `--resume --rerun-failed --heartbeat-sec 30`
+- Progress JSON: `logs/repro/<matrix_id>_progress.json`
+
+For CI/sandbox portability:
+- `UV_CACHE_DIR=$PWD/.uv-cache`
+- `MPLBACKEND=Agg`
+- Write figure outputs to non-manual path (for example `figures/paper_reproduce`).
+
 ## Coding Style & Naming Conventions
 Follow existing Python style: 4-space indentation, `snake_case` for modules/functions/variables, concise docstrings for public functions. Keep parameter names consistent with config keys (`k`, `p`, `m`, `T_reconf`, etc.). When changing optimization constraints, keep `model_gurobi.py` and `model_pulp.py` behavior aligned.
 

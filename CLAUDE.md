@@ -88,6 +88,28 @@ Recommended restart flow for long paper runs:
 3. If interrupted, rerun the exact same command; completed hashes will be skipped.
 4. Track progress via heartbeats and `logs/repro/<matrix_id>_progress.json`.
 
+
+### Reproducibility Defaults
+
+Use matrix-file defaults for standard paper reproducibility. Avoid ad-hoc solver-time changes unless running a dedicated solver-behavior study.
+
+Recommended runtime practice:
+- Run `--limit 1` first for a smoke check.
+- Use `--resume --rerun-failed --heartbeat-sec 30` for long batches.
+- Treat total runtime as environment-dependent (host load and branch-and-bound variance).
+
+### CI / Sandbox Portability Tips
+
+- Prefer pinned dependency install:
+  - `uv sync --frozen`
+- Keep uv cache in workspace (avoid HOME permission coupling):
+  - `export UV_CACHE_DIR="$PWD/.uv-cache"`
+- Force headless plotting backend:
+  - `export MPLBACKEND=Agg`
+- Use resumable matrix commands:
+  - `--resume --rerun-failed --heartbeat-sec 30`
+
+
 ### Running Scripts
 
 Scripts in `scripts/*.py` require the repository root in PYTHONPATH:
