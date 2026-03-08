@@ -108,10 +108,18 @@ uv run python main.py \
   --config config/instance.toml \
   --metrics-file logs/demo_metrics.json \
   --run-id demo-run
+
+# 使用固定文件名导出 PNG（可调图尺寸）
+uv run python main.py \
+  --config config/instance.toml \
+  --program-config config/program_png.toml
 ```
 
 **预期输出：**
 - 甘特图可视化：`figures/solution_*.pdf`
+- 使用 `config/program_png.toml` 时，还会输出固定文件名 PNG：
+  - `figures/optimized_schedule.png`
+  - `figures/baseline_schedule.png`
 - 解文件：`solution/solution_*.json`
 - 控制台中的性能指标
 
@@ -122,11 +130,11 @@ PuLP solver is available
 Parameters loaded from config/instance.toml
 ...
 Comparison:
-One-shot CCT: 680 μs
-Improvement over one-shot: 35%
-Baseline CCT:  830 μs
-Optimized CCT: 440 μs
-Improvement over baseline: 47%
+One-shot CCT: None
+One-shot schedule is not feasible for current parameters
+Baseline CCT:  1480 μs
+Optimized CCT: 1140 μs
+Improvement over baseline: 23%
 ```
 
 ## 📊 运行批量实验
@@ -210,6 +218,22 @@ algorithm = "ar_having-doubling"  # 集体通信算法
 save_as_pdf = true           # 将甘特图保存为 PDF
 debug_mode = 0               # 0: 关闭，1: 调试模型，2: 比较模式
 show = false                 # 交互式显示图表
+```
+
+### PNG 导出配置（`config/program_png.toml`）
+
+```toml
+save_as_pdf = true
+show = false
+debug_mode = 0
+
+figure_format = "png"
+figure_width = 16
+figure_height = 4
+figure_dpi = 160
+
+optimized_figure_filename = "figures/optimized_schedule.png"
+baseline_figure_filename = "figures/baseline_schedule.png"
 ```
 
 ### 支持的算法
@@ -329,10 +353,13 @@ SWOT 生成显示以下内容的甘特图：
 - 每个 OCS 交换机的时间线
 - 步骤边界和同步点
 
-示例输出可视化：
+示例输出可视化（基于 `config/instance.toml` + `config/program_png.toml`）：
 
-![调度可视化](figures/optimized_schedule.png)
-*（显示优化重配置-传输重叠的甘特图）*
+![基线调度可视化](figures/baseline_schedule.png)
+*（同一实例下的基线甘特图）*
+
+![优化调度可视化](figures/optimized_schedule.png)
+*（优化后的重配置-传输重叠甘特图）*
 
 ## 🛠️ 开发
 
@@ -361,14 +388,18 @@ if algorithm == 'my_algorithm':
 
 ```bash
 # 运行小型测试实例
-uv run python main.py --config config/test_instance.toml
+uv run python main.py --config config/instance.toml
 
 # 验证解
 uv run python -c "
 from paradigm.solver_wrapper import load_and_validate_solution
 from config.instance_parser import get_parameters
 params = get_parameters('config/instance.toml')
-load_and_validate_solution(params, 'solution/solution_*.json', solver='pulp')
+load_and_validate_solution(
+    params,
+    'solution/solution_ar_having-doubling_break_k=2_p=8_m=32.json',
+    solver=params['solver']
+)
 "
 ```
 

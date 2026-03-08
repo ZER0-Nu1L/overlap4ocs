@@ -4,21 +4,22 @@ Orchestrator module for SWOT scheduler.
 This module breaks down the monolithic main() function into smaller,
 testable components with clear responsibilities.
 """
-import os
+
 import json
-from datetime import datetime
 import logging as log
+import os
+from datetime import datetime
 
 from config.instance_parser import get_parameters
-from utils.scheduler_analysis import extract_results, plot_schedule
 from paradigm.baseline import compute_baseline_schedule
-from paradigm.one_shot import compute_oneshot_schedule
 from paradigm.ideal import compute_ideal_time
+from paradigm.one_shot import compute_oneshot_schedule
+from paradigm.solver_wrapper import get_solution_value, solve_model, write_model
 from paradigm.warm_start import build_baseline_warm_start
-from paradigm.solver_wrapper import solve_model, get_solution_value, write_model
+from utils.scheduler_analysis import extract_results, plot_schedule
 
 
-def generate_output_paths(params):
+def generate_output_paths(params, figure_ext="pdf"):
     """
     Generate standardized output file paths for figures and solutions.
 
@@ -28,22 +29,25 @@ def generate_output_paths(params):
     Returns:
         dict: Dictionary containing all output paths
     """
-    alg = params['algorithm']
-    k = params['k']
-    p = params['p']
-    m = params['m']
+    alg = params["algorithm"]
+    k = params["k"]
+    p = params["p"]
+    m = params["m"]
 
+    figure_ext = str(figure_ext).lstrip(".")
     return {
-        'solution_figure': f"figures/solution_{alg}_break_k={k}_p={p}_m={m}.pdf",
-        'solution_file': f"solution/solution_{alg}_break_k={k}_p={p}_m={m}.json",
-        'baseline_figure': f"figures/baseline_{alg}__k={k}_p={p}_m={m}.pdf",
-        'baseline_file': f"solution/baseline_{alg}__k={k}_p={p}_m={m}.json",
-        'oneshot_figure': f"figures/oneshot_{alg}_t_k={k}_p={p}_m={m}.pdf",
-        'oneshot_file': f"solution/oneshot_{alg}__k={k}_p={p}_m={m}.json",
+        "solution_figure": f"figures/solution_{alg}_break_k={k}_p={p}_m={m}.{figure_ext}",
+        "solution_file": f"solution/solution_{alg}_break_k={k}_p={p}_m={m}.json",
+        "baseline_figure": f"figures/baseline_{alg}__k={k}_p={p}_m={m}.{figure_ext}",
+        "baseline_file": f"solution/baseline_{alg}__k={k}_p={p}_m={m}.json",
+        "oneshot_figure": f"figures/oneshot_{alg}_t_k={k}_p={p}_m={m}.{figure_ext}",
+        "oneshot_file": f"solution/oneshot_{alg}__k={k}_p={p}_m={m}.json",
     }
 
 
-def compute_reference_schedules(params, output_paths, save_as_pdf=True, show=False):
+def compute_reference_schedules(
+    params, output_paths, save_as_pdf=True, show=False, figure_style=None
+):
     """
     Compute baseline, one-shot, and ideal reference schedules.
 
@@ -58,17 +62,30 @@ def compute_reference_schedules(params, output_paths, save_as_pdf=True, show=Fal
     """
     # Baseline
     cct_baseline, schedule_baseline = compute_baseline_schedule(params)
+    figure_style = figure_style or {}
     plot_schedule(
-        schedule_baseline, params['k'], params['T_reconf'],
-        save_as_pdf=save_as_pdf, filename=output_paths['baseline_figure'], show=show
+        schedule_baseline,
+        params["k"],
+        params["T_reconf"],
+        save_as_pdf=save_as_pdf,
+        filename=output_paths["baseline_figure"],
+        show=show,
+        title="Baseline Transmission and Reconfiguration Schedule",
+        **figure_style,
     )
 
     # One-shot
     cct_oneshot, schedule_oneshot = compute_oneshot_schedule(params)
     if cct_oneshot is not None:
         plot_schedule(
-            schedule_oneshot, params['k'], params['T_reconf'],
-            save_as_pdf=save_as_pdf, filename=output_paths['oneshot_figure'], show=show
+            schedule_oneshot,
+            params["k"],
+            params["T_reconf"],
+            save_as_pdf=save_as_pdf,
+            filename=output_paths["oneshot_figure"],
+            show=show,
+            title="One-shot Transmission and Reconfiguration Schedule",
+            **figure_style,
         )
 
     # Ideal
@@ -77,7 +94,9 @@ def compute_reference_schedules(params, output_paths, save_as_pdf=True, show=Fal
     return cct_baseline, schedule_baseline, cct_oneshot, schedule_oneshot, cct_ideal
 
 
-def select_warm_start(cct_baseline, schedule_baseline, cct_oneshot, schedule_oneshot, params):
+def select_warm_start(
+    cct_baseline, schedule_baseline, cct_oneshot, schedule_oneshot, params
+):
     """
     Select the best warm start between baseline and one-shot schedules.
 
@@ -106,14 +125,24 @@ def select_warm_start(cct_baseline, schedule_baseline, cct_oneshot, schedule_one
     warm_start_payload = None
     warm_start_label = None
     if warm_start_schedule and warm_start_cct is not None:
-        warm_start_payload = build_baseline_warm_start(warm_start_schedule, params, warm_start_cct)
+        warm_start_payload = build_baseline_warm_start(
+            warm_start_schedule, params, warm_start_cct
+        )
         if warm_start_payload:
             warm_start_label = f"Applied {warm_start_choice} warm start (CCT={warm_start_cct * 1000:.0f} μs)"
 
-    return warm_start_payload, warm_start_label, warm_start_choice, warm_start_cct, warm_start_schedule
+    return (
+        warm_start_payload,
+        warm_start_label,
+        warm_start_choice,
+        warm_start_cct,
+        warm_start_schedule,
+    )
 
 
-def build_and_solve_model(params, warm_start_payload, warm_start_label, solver_gap, solver_time_limit):
+def build_and_solve_model(
+    params, warm_start_payload, warm_start_label, solver_gap, solver_time_limit
+):
     """
     Build the MILP model and solve it.
 
@@ -127,18 +156,20 @@ def build_and_solve_model(params, warm_start_payload, warm_start_label, solver_g
     Returns:
         tuple: (model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, warm_start_applied)
     """
-    solver = params['solver']
+    solver = params["solver"]
 
     # Import appropriate model builder
-    if solver == 'gurobi':
+    if solver == "gurobi":
         from paradigm.model_gurobi import build_model
-    elif solver == 'pulp' or solver == 'copt':
+    elif solver == "pulp" or solver == "copt":
         from paradigm.model_pulp import build_model
     else:
         raise ValueError(f"Unsupported solver: {solver}")
 
     # Build model
-    model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end = build_model(params)
+    model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end = (
+        build_model(params)
+    )
 
     # Solve model
     model, warm_start_applied = solve_model(
@@ -146,27 +177,50 @@ def build_and_solve_model(params, warm_start_payload, warm_start_label, solver_g
         solver,
         warm_start_payload=warm_start_payload,
         warm_start_variables={
-            'cct': cct,
-            'd': d,
-            't_start': t_start,
-            't_end': t_end,
-            'u': u,
-            'r': r,
-            't_reconf_start': t_reconf_start,
-            't_reconf_end': t_reconf_end,
-            't_step_end': t_step_end,
+            "cct": cct,
+            "d": d,
+            "t_start": t_start,
+            "t_end": t_end,
+            "u": u,
+            "r": r,
+            "t_reconf_start": t_reconf_start,
+            "t_reconf_end": t_reconf_end,
+            "t_step_end": t_step_end,
         },
         warm_start_label=warm_start_label,
         solver_gap=solver_gap,
         solver_time_limit=solver_time_limit,
     )
 
-    return model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, warm_start_applied
+    return (
+        model,
+        cct,
+        d,
+        t_start,
+        t_end,
+        u,
+        r,
+        t_reconf_start,
+        t_reconf_end,
+        t_step_end,
+        warm_start_applied,
+    )
 
 
 def extract_and_validate_solution(
-    model, cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end,
-    params, warm_start_cct, warm_start_schedule
+    model,
+    cct,
+    d,
+    t_start,
+    t_end,
+    u,
+    r,
+    t_reconf_start,
+    t_reconf_end,
+    t_step_end,
+    params,
+    warm_start_cct,
+    warm_start_schedule,
 ):
     """
     Extract solution from model and validate against warm start.
@@ -183,20 +237,28 @@ def extract_and_validate_solution(
     """
     # Extract results
     schedule = extract_results(
-        model, cct=cct, d=d, t_start=t_start, t_end=t_end,
-        u=u, r=r, t_reconf_start=t_reconf_start,
-        t_reconf_end=t_reconf_end, t_step_end=t_step_end,
-        params=params
+        model,
+        cct=cct,
+        d=d,
+        t_start=t_start,
+        t_end=t_end,
+        u=u,
+        r=r,
+        t_reconf_start=t_reconf_start,
+        t_reconf_end=t_reconf_end,
+        t_step_end=t_step_end,
+        params=params,
     )
 
     # Validate against warm start
-    cct_optimized = get_solution_value(cct) - params['T_reconf']
+    cct_optimized = get_solution_value(cct) - params["T_reconf"]
     fallback_used = False
 
     if warm_start_cct is not None and cct_optimized > warm_start_cct + 1e-9:
         log.warning(
             "Final solution worse than warm start (%.6g > %.6g); falling back to warm-start schedule",
-            cct_optimized, warm_start_cct
+            cct_optimized,
+            warm_start_cct,
         )
         schedule = warm_start_schedule
         cct_optimized = warm_start_cct
@@ -206,8 +268,14 @@ def extract_and_validate_solution(
 
 
 def save_solutions(
-    schedule, model, solver, fallback_used, output_paths,
-    schedule_baseline, cct_oneshot, schedule_oneshot
+    schedule,
+    model,
+    solver,
+    fallback_used,
+    output_paths,
+    schedule_baseline,
+    cct_oneshot,
+    schedule_oneshot,
 ):
     """
     Save all solution files.
@@ -224,18 +292,18 @@ def save_solutions(
     """
     # Save optimized solution
     if fallback_used:
-        with open(output_paths['solution_file'], 'w') as sol_fp:
+        with open(output_paths["solution_file"], "w") as sol_fp:
             json.dump(schedule, sol_fp, indent=2)
     else:
-        write_model(model, output_paths['solution_file'], solver)
+        write_model(model, output_paths["solution_file"], solver)
 
     # Save baseline solution
-    with open(output_paths['baseline_file'], 'w') as baseline_fp:
+    with open(output_paths["baseline_file"], "w") as baseline_fp:
         json.dump(schedule_baseline, baseline_fp, indent=2)
 
     # Save one-shot solution if it exists
     if cct_oneshot is not None and schedule_oneshot:
-        with open(output_paths['oneshot_file'], 'w') as oneshot_fp:
+        with open(output_paths["oneshot_file"], "w") as oneshot_fp:
             json.dump(schedule_oneshot, oneshot_fp, indent=2)
 
 
@@ -252,15 +320,19 @@ def log_results(cct_baseline, cct_oneshot, cct_optimized, params):
     Returns:
         tuple: (improvement_over_baseline, improvement_over_oneshot)
     """
-    cct_baseline_adj = cct_baseline - params['T_reconf']
+    cct_baseline_adj = cct_baseline - params["T_reconf"]
     cct_oneshot_adj = None
     improvement_over_oneshot = None
 
     log.info("\nComparison:")
     if cct_oneshot is not None:
-        cct_oneshot_adj = cct_oneshot - params['T_reconf']
+        cct_oneshot_adj = cct_oneshot - params["T_reconf"]
         log.info(f"One-shot CCT: {cct_oneshot_adj * 1000:.0f} μs")
-        improvement_over_oneshot = ((cct_oneshot_adj - cct_optimized) / cct_oneshot_adj) * 100 if cct_oneshot_adj != 0 else 0
+        improvement_over_oneshot = (
+            ((cct_oneshot_adj - cct_optimized) / cct_oneshot_adj) * 100
+            if cct_oneshot_adj != 0
+            else 0
+        )
         log.info(f"Improvement over one-shot: {improvement_over_oneshot:.0f}%")
     else:
         log.info("One-shot CCT: None")
@@ -268,10 +340,19 @@ def log_results(cct_baseline, cct_oneshot, cct_optimized, params):
 
     log.info(f"Baseline CCT:  {cct_baseline_adj * 1000:.0f} μs")
     log.info(f"Optimized CCT: {cct_optimized * 1000:.0f} μs")
-    improvement_over_baseline = ((cct_baseline_adj - cct_optimized) / cct_baseline_adj) * 100 if cct_baseline_adj != 0 else 0
+    improvement_over_baseline = (
+        ((cct_baseline_adj - cct_optimized) / cct_baseline_adj) * 100
+        if cct_baseline_adj != 0
+        else 0
+    )
     log.info(f"Improvement over baseline: {improvement_over_baseline:.0f}%")
 
-    return improvement_over_baseline, improvement_over_oneshot, cct_baseline_adj, cct_oneshot_adj
+    return (
+        improvement_over_baseline,
+        improvement_over_oneshot,
+        cct_baseline_adj,
+        cct_oneshot_adj,
+    )
 
 
 def write_metrics(metrics_path, payload):
@@ -279,15 +360,29 @@ def write_metrics(metrics_path, payload):
     directory = os.path.dirname(metrics_path)
     if directory:
         os.makedirs(directory, exist_ok=True)
-    with open(metrics_path, 'w') as metrics_file:
+    with open(metrics_path, "w") as metrics_file:
         json.dump(payload, metrics_file, indent=2)
 
 
 def build_metrics_payload(
-    args, params, solver, output_paths, warm_start_applied, warm_start_choice,
-    warm_start_cct, fallback_used, cct_optimized, cct_baseline_adj,
-    cct_oneshot, cct_oneshot_adj, cct_ideal, improvement_over_baseline,
-    improvement_over_oneshot, solver_gap, solver_time_limit, debug_mode
+    args,
+    params,
+    solver,
+    output_paths,
+    warm_start_applied,
+    warm_start_choice,
+    warm_start_cct,
+    fallback_used,
+    cct_optimized,
+    cct_baseline_adj,
+    cct_oneshot,
+    cct_oneshot_adj,
+    cct_ideal,
+    improvement_over_baseline,
+    improvement_over_oneshot,
+    solver_gap,
+    solver_time_limit,
+    debug_mode,
 ):
     """Build metrics payload for output."""
     return {
@@ -298,37 +393,41 @@ def build_metrics_payload(
         "solver": solver,
         "status": "success",
         "figures": {
-            "solution": output_paths['solution_figure'],
-            "baseline": output_paths['baseline_figure'],
-            "oneshot": output_paths['oneshot_figure'] if cct_oneshot is not None else None,
+            "solution": output_paths["solution_figure"],
+            "baseline": output_paths["baseline_figure"],
+            "oneshot": output_paths["oneshot_figure"]
+            if cct_oneshot is not None
+            else None,
             "warm_start_applied": warm_start_applied,
             "warm_start_source": warm_start_choice,
             "warm_start_cct": warm_start_cct,
             "warm_start_fallback_used": fallback_used,
-            "debug": None  # Filled in if debug_mode == 1
+            "debug": None,  # Filled in if debug_mode == 1
         },
         "solutions": {
-            "solution": output_paths['solution_file'],
-            "baseline": output_paths['baseline_file'],
-            "oneshot": output_paths['oneshot_file'] if cct_oneshot is not None else None,
-            "debug": None  # Filled in if debug_mode == 1
+            "solution": output_paths["solution_file"],
+            "baseline": output_paths["baseline_file"],
+            "oneshot": output_paths["oneshot_file"]
+            if cct_oneshot is not None
+            else None,
+            "debug": None,  # Filled in if debug_mode == 1
         },
         "cct": {
             "optimized": cct_optimized,
             "baseline": cct_baseline_adj,
             "oneshot": cct_oneshot_adj if cct_oneshot is not None else None,
-            "ideal": cct_ideal
+            "ideal": cct_ideal,
         },
         "improvement_percent": {
             "over_baseline": improvement_over_baseline,
-            "over_oneshot": improvement_over_oneshot if cct_oneshot is not None else None
+            "over_oneshot": improvement_over_oneshot
+            if cct_oneshot is not None
+            else None,
         },
         "params": params,
         "solver_options": {
             "gap": solver_gap,
             "time_limit": solver_time_limit,
         },
-        "notes": {
-            "debug_mode": debug_mode
-        }
+        "notes": {"debug_mode": debug_mode},
     }

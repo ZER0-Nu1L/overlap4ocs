@@ -1,0 +1,18 @@
+# Save generated figures
+save_as_pdf = true
+
+# Do not open interactive windows during batch runs
+show = false
+
+# Debug mode level (0: off, 1: enable debug model, 2: comparison mode)
+debug_mode = 0
+
+# Figure rendering options
+figure_format = "png"
+figure_width = 16
+figure_height = 4
+figure_dpi = 160
+
+# Fixed output filenames for quick comparison
+optimized_figure_filename = "figures/optimized_schedule.png"
+baseline_figure_filename = "figures/baseline_schedule.png"

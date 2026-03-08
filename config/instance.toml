@@ -1,26 +1,26 @@
 # Solver configuration
 solver = "pulp" # 'gurobi', 'pulp', or 'copt'
 solver_gap = 0.05          # (Optional) Relative gap tolerance (e.g., 0.05 -> 5%)
-solver_time_limit = 60    # (Optional) Time limit in seconds (set to 0 or omit for unlimited); Gurobi don't fully support time limit.
+solver_time_limit = 120    # (Optional) Time limit in seconds (set to 0 or omit for unlimited); Gurobi don't fully support time limit.
 
 # Topology
-k = 4
+k = 2
 T_reconf = 0.2  # Reconfiguration time (ms)
 T_lat = 0.02 # End-to-end base latency (ms)
-B = 12.5  # 400 Gbps -> 50 GBps
+B = 50  # 400 Gbps -> 50 GBps
 # B stands for the bandwidth per link(degree) (GBps)
 # B * k stands for the total bandwidth of a single node
 
 # CC params
-p = 256  # Number of compute nodes
+p = 8  # Number of compute nodes
 m = 32  # Total message size (MB) | 32 * 1000 * 1000
 
 # NOTE: In order to directly calculate `m/B`, `m_i[i]/B`, and `d/B`, we fix the time unit as milliseconds(ms), convert the transmission unit to GBps, and set the message size as MB.
 # e.g., 64 MB / 100 GBps = 0.64 ms
 
 # CC primitive and Algorithm
-algorithm = "ar_ring"
-# Available: 
+algorithm = "ar_having-doubling"
+# Available:
 # - "rs_having-doubling", "ag_having-doubling"
 # - "ar_ring", "ar_having-doubling", "ar_recursive-doubling"
 # - "a2a_pairwise", "a2a_bruck"

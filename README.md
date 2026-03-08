@@ -108,10 +108,18 @@ uv run python main.py \
   --config config/instance.toml \
   --metrics-file logs/demo_metrics.json \
   --run-id demo-run
+
+# Export fixed PNG schedules with custom figure size
+uv run python main.py \
+  --config config/instance.toml \
+  --program-config config/program_png.toml
 ```
 
 **Expected Output:**
 - Gantt chart visualization: `figures/solution_*.pdf`
+- Fixed-name PNG charts (when using `config/program_png.toml`):
+  - `figures/optimized_schedule.png`
+  - `figures/baseline_schedule.png`
 - Solution file: `solution/solution_*.json`
 - Performance metrics in console
 
@@ -122,11 +130,11 @@ PuLP solver is available
 Parameters loaded from config/instance.toml
 ...
 Comparison:
-One-shot CCT: 680 μs
-Improvement over one-shot: 35%
-Baseline CCT:  830 μs
-Optimized CCT: 440 μs
-Improvement over baseline: 47%
+One-shot CCT: None
+One-shot schedule is not feasible for current parameters
+Baseline CCT:  1480 μs
+Optimized CCT: 1140 μs
+Improvement over baseline: 23%
 ```
 
 ## 📊 Running Batch Experiments
@@ -210,6 +218,22 @@ algorithm = "ar_having-doubling"  # Collective algorithm
 save_as_pdf = true           # Save Gantt charts as PDF
 debug_mode = 0               # 0: off, 1: debug model, 2: comparison
 show = false                 # Display charts interactively
+```
+
+### PNG Export Configuration (`config/program_png.toml`)
+
+```toml
+save_as_pdf = true
+show = false
+debug_mode = 0
+
+figure_format = "png"
+figure_width = 16
+figure_height = 4
+figure_dpi = 160
+
+optimized_figure_filename = "figures/optimized_schedule.png"
+baseline_figure_filename = "figures/baseline_schedule.png"
 ```
 
 ### Supported Algorithms
@@ -336,10 +360,14 @@ SWOT generates Gantt charts showing:
 - Timeline for each OCS switch
 - Step boundaries and synchronization points
 
-Example output visualization:
+Example output visualizations (from `config/instance.toml` + `config/program_png.toml`):
 
-![Schedule Visualization](figures/optimized_schedule.png)
-*(Gantt chart showing optimized reconfiguration-transmission overlap)*
+![Baseline Schedule Visualization](figures/baseline_schedule.png)
+*(Baseline schedule for the same instance)*
+
+![Optimized Schedule Visualization](figures/optimized_schedule.png)
+*(Optimized reconfiguration-transmission overlap schedule)*
+
 
 ## 🛠️ Development
 
@@ -368,14 +396,18 @@ if algorithm == 'my_algorithm':
 
 ```bash
 # Run a small test instance
-uv run python main.py --config config/test_instance.toml
+uv run python main.py --config config/instance.toml
 
 # Validate solution
 uv run python -c "
 from paradigm.solver_wrapper import load_and_validate_solution
 from config.instance_parser import get_parameters
 params = get_parameters('config/instance.toml')
-load_and_validate_solution(params, 'solution/solution_*.json', solver='pulp')
+load_and_validate_solution(
+    params,
+    'solution/solution_ar_having-doubling_break_k=2_p=8_m=32.json',
+    solver=params['solver']
+)
 "
 ```
 
