@@ -7,6 +7,7 @@ figures/**
 !figures/paper/**
 !figures/optimized_schedule.pdf
 !figures/optimized_schedule.png
+!figures/baseline_schedule.png
 notebook/figures/
 scripts/figures/
 solution/
