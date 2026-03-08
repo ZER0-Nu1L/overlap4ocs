@@ -4,7 +4,6 @@ Date: 2026-03-07
 
 ## What Was Changed
 
-- Updated [`config/matrix/paper/exp1.3-a2a_bruck.toml`](../config/matrix/paper/exp1.3-a2a_bruck.toml) from `solver_time_limit = 180` to `solver_time_limit = 120` to align with other experiment defaults.
 - Ran full `a2a_pairwise` sweeps for `solver_time_limit in {200, 600, 900, 1200, 1500, 3000}` at `p=256, k=8, B=12.5`.
 - Built two plotting views:
   - Pairwise-only (no one-shot available in pairwise CSVs).

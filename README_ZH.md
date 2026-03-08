@@ -89,13 +89,7 @@ uv sync --extra gurobi
 uv sync --extra notebook
 ```
 
-<details>
-<summary><b>替代方案：使用 pip</b></summary>
-
-```bash
-pip install -r requirements.txt
-```
-</details>
+> 本仓库统一采用 `uv` 工作流，不再维护并行的 `pip` 安装路径。
 
 ### 运行单个实验
 

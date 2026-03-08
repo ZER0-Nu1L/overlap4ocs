@@ -24,11 +24,9 @@ uv sync --extra gurobi
 uv sync --extra notebook
 ```
 
-### Using pip (Alternative)
+### pip Note
 
-```bash
-pip install -r requirements.txt
-```
+Use `uv` as the only supported dependency workflow in this repository.
 
 ## Running the Code
 
@@ -43,11 +41,7 @@ pip install -r requirements.txt
 Run a single optimization instance:
 
 ```bash
-# Using uv
 uv run python main.py --config config/instance.toml
-
-# Using pip
-python3 main.py --config config/instance.toml
 ```
 
 With metrics logging:

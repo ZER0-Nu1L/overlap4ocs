@@ -89,13 +89,7 @@ uv sync --extra gurobi
 uv sync --extra notebook
 ```
 
-<details>
-<summary><b>Alternative: Using pip</b></summary>
-
-```bash
-pip install -r requirements.txt
-```
-</details>
+> This repository standardizes on `uv`; a parallel `pip` workflow is intentionally not maintained.
 
 ### Running a Single Experiment
 
