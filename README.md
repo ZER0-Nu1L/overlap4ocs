@@ -76,7 +76,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 brew install uv
 
 # Clone the repository
-git clone https://github.com/yourusername/overlap4ocs.git
+git clone https://github.com/ZER0-Nu1L/overlap4ocs.git
 cd overlap4ocs
 
 # Install dependencies
@@ -192,12 +192,12 @@ uv run python scripts/matrix_archive.py \
 # Solver configuration
 solver = "pulp"              # Options: "gurobi", "pulp", "copt"
 solver_gap = 0.05            # Relative MIP gap tolerance (5%)
-solver_time_limit = 60       # Time limit in seconds
+solver_time_limit = 120      # Time limit in seconds
 
 # Network topology
-k = 4                        # Number of OCS switches
-p = 256                      # Number of compute nodes
-B = 12.5                     # Bandwidth per link (GBps)
+k = 2                        # Number of OCS switches
+p = 8                        # Number of compute nodes
+B = 50                       # Bandwidth per link (GBps)
 T_reconf = 0.2               # OCS reconfiguration time (ms)
 T_lat = 0.02                 # End-to-end base latency (ms)
 
@@ -266,10 +266,13 @@ See [`docs/math_model.md`](docs/math_model.md) for detailed mathematical formula
 
 ```
 overlap4ocs/
+├── .github/
+│   └── workflows/               # CI smoke / repro-lite / repro-full
 ├── main.py                      # Main entry point
 ├── config/
 │   ├── instance.toml           # Problem instance parameters
 │   ├── program.toml            # Runtime configuration
+│   ├── program_png.toml        # Fixed-name PNG export configuration
 │   ├── instance_parser.py      # Configuration parser
 │   ├── cc_algorithm.py         # Collective algorithm definitions
 │   └── matrix/
@@ -295,6 +298,7 @@ overlap4ocs/
 │   └── check_platform.py       # Platform detection
 ├── docs/
 │   ├── math_model.md           # Mathematical formulation
+│   ├── exp1.3-a2a-time-limit-study.md  # Solver time-limit study notes
 │   └── reproducibility.md      # Reproducibility workflow
 ├── CLAUDE.md                   # Development guide
 └── README.md                   # This file
