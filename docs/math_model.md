@@ -6,11 +6,11 @@ We aim to jointly optimize collective communication with the reconfiguration of 
 We formulate the overlapping reconfiguration and communication problem as a **Mixed Integer Linear Programming (MILP)** model to **minimize the Communication Completion Time (CCT)**.  
 
 Our model considers:
-- $ p $ compute nodes,
-- $ k $ OCSes,
-- collective communication patterns (e.g., AllReduce using Rabenseifner’s algorithm), where each communication step $ i $ has:
-  - message size $ m_i $,
-  - required topology configuration $ \text{cfg}_i $.
+- $p$ compute nodes,
+- $k$ OCSes,
+- collective communication patterns (e.g., AllReduce using Rabenseifner’s algorithm), where each communication step $i$ has:
+  - message size $m_i$,
+  - required topology configuration $\text{cfg}_i$.
 
 A legitimate scheduling strategy must satisfy the following three properties:
 
@@ -110,4 +110,4 @@ $$
 
 ### Implementation
 
-Our current implementation uses the commercial solver **Gurobi** [@gurobi] to solve the MILP formulation, leveraging its advanced branch-and-cut algorithms to efficiently explore the $ \mathcal{O}(2^N) $ solution space.
+Our current implementation uses the commercial solver **Gurobi** [@gurobi] to solve the MILP formulation, leveraging its advanced branch-and-cut algorithms to efficiently explore the $\mathcal{O}(2^N)$ solution space.
