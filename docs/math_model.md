@@ -1,3 +1,9 @@
+> [!NOTE]
+> This document mixes GitHub Markdown, LaTeX math, tables, and Pandoc-style citations such as `[@cococcioniBigMMethodNumerical2021]`.
+> GitHub's math renderer does not always handle this combination correctly, so it may show errors like `Unable to render expression.` or ` '_' allowed only in math mode`.
+> In particular, formulas with subscripts, `\text{...}` blocks, and other underscore-heavy LaTeX fragments can be misparsed when they appear inside complex Markdown structures.
+> For accurate reading, please prefer a local Markdown editor with stronger math support, or view the source directly in the repository.
+
 ## SWOT Scheduler {#sec:schedule}
 
 The scheduler is the core component of **SWOT**, and the scheduling decisions determine the extent of performance improvement that SWOT can achieve.  
@@ -105,9 +111,3 @@ $$
    - Each step's completion time $t_{\text{step\_e}_i}$ is at least the maximum of all active OCS transmission end times in that step;
    - Any transmission start time in the next step must not be earlier than the previous step's completion time.
 - **(16)** **CCT definition**: Overall CCT is the maximum of all step completion times, represented by variable $\text{CCT}$, which is the optimization objective.
-
----
-
-### Implementation
-
-Our current implementation uses the commercial solver **Gurobi** [@gurobi] to solve the MILP formulation, leveraging its advanced branch-and-cut algorithms to efficiently explore the $\mathcal{O}(2^N)$ solution space.
