@@ -23,15 +23,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v7
 
       - name: Install CBC solver
         run: |
@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies (locked)
         run: uv sync --frozen --extra notebook
 
-      - name: Run repro-lite matrix subset
+      - name: Run repro-lite matrix smoke subset
         run: |
           for matrix in \
             config/matrix/paper/exp1.1-hd+bruck-1.toml \
@@ -65,21 +65,14 @@ jobs:
               --progress-file "logs/repro/${base}_progress.json"
           done
 
-      - name: Prepare merged CSVs
-        run: uv run python scripts/prepare_simulation_data.py --target all
-
-      - name: Generate paper figures (safe output dir)
-        run: uv run python scripts/simulation_fig.py --write-summary --output-dir figures/paper_reproduce
-
       - name: Upload repro-lite artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: repro-lite-${{ github.run_id }}
           retention-days: 14
           path: |
             logs/repro/*.json
             logs/matrix_results-*.csv
-            logs/results-*.csv
-            figures/paper_reproduce/*.pdf
-            figures/paper_reproduce/*.md
+            logs/runs/**/metrics.json
+            logs/runs/**/run.log
