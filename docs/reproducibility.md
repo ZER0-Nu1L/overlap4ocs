@@ -18,6 +18,7 @@ uv sync --extra notebook
 
 - Start with a smoke run (`--limit 1`) first; this is usually a few minutes.
 - Full paper reproduction is workload-dependent and can range from tens of minutes to hours.
+- Because a full reproduction can run for hours, avoid running it on a local laptop/workstation when possible; prefer a server or other long-lived machine.
 - Solver branch-and-bound variance can cause runtime differences across hosts and runs.
 
 ## GitHub Actions Profiles
@@ -30,11 +31,11 @@ The repository includes three CI profiles under `.github/workflows/`:
   - Target runtime: short, used as merge gate
 - `repro-lite.yml`:
   - Trigger: weekly schedule + manual
-  - Scope: limited subset across Exp1.1/1.2/1.3/2.x, then `prepare_simulation_data.py` and `simulation_fig.py`
-  - Output: artifacts in `figures/paper_reproduce` and `logs/*.csv/json`
+  - Scope: limited matrix subset across Exp1.1/1.2/1.3/2.x with resumability and heartbeat/progress files
+  - Output: matrix CSVs, progress JSON, and per-run logs/metrics artifacts
 - `repro-full.yml`:
   - Trigger: manual only (`workflow_dispatch`)
-  - Scope: full matrix suite from this guide, resumable with heartbeat/progress files
+  - Scope: full matrix suite from this guide, then `prepare_simulation_data.py`, with optional figure generation to `figures/paper_reproduce`
   - Usage: long-running paper-grade reproduction (do not use as PR gate)
 
 ## End-to-End Workflow
@@ -44,6 +45,22 @@ Matrix config layout:
 - `config/matrix/examples/`: additional templates and historical sweep variants.
 
 ### 1) Run matrix experiments
+
+Smoke run (recommended first):
+
+Use this first to validate the environment, script orchestration, and logging before starting the full paper reproduction.
+
+```bash
+PYTHONPATH=. uv run python scripts/matrix_runner.py \
+  --matrix config/matrix/paper/exp1.1-hd+bruck-1.toml \
+  --limit 1 \
+  --resume \
+  --heartbeat-sec 10
+```
+
+Full matrix experiments:
+
+Because this can run for several hours, prefer running it on a server rather than a local machine.
 
 ```bash
 for matrix in \
@@ -64,16 +81,6 @@ for matrix in \
     --rerun-failed \
     --heartbeat-sec 30
 done
-```
-
-Smoke run:
-
-```bash
-PYTHONPATH=. uv run python scripts/matrix_runner.py \
-  --matrix config/matrix/paper/exp1.1-hd+bruck-1.toml \
-  --limit 1 \
-  --resume \
-  --heartbeat-sec 10
 ```
 
 Resume/recovery recommendations:
