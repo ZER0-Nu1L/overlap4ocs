@@ -7,6 +7,8 @@ This repository has two layers for paper reproduction:
 
 ## Prerequisites
 
+Install `uv` first if it is not already available in your environment. For installation options, see the repository [`README.md`](../README.md) or the official `uv` docs: <https://docs.astral.sh/uv/>.
+
 ```bash
 uv sync --extra notebook
 ```
