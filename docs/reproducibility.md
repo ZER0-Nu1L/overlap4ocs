@@ -20,6 +20,7 @@ uv sync --extra notebook
 
 - Start with a smoke run (`--limit 1`) first; this is usually a few minutes.
 - Full paper reproduction is workload-dependent and can range from tens of minutes to hours.
+- For planning purposes, budget a full end-to-end paper reproduction conservatively as a multi-hour run; on a typical workstation or server, setting aside roughly 8-11 hours (or an overnight window) is a reasonable baseline.
 - Because a full reproduction can run for hours, avoid running it on a local laptop/workstation when possible; prefer a server or other long-lived machine.
 - Solver branch-and-bound variance can cause runtime differences across hosts and runs.
 

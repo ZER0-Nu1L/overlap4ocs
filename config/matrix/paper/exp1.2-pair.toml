@@ -2,7 +2,7 @@ matrix_id = "exp1.2-pair"
 
 solver = "pulp"
 solver_gap = 0.05
-solver_time_limit = 180
+solver_time_limit = 120
 program_config = "config/program.toml"
 
 message_sizes_mib = [32]  # in MB
