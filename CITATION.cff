@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use SWOT in your research, please cite this paper."
+title: "SWOT: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks"
+authors:
+  - family-names: Wu
+    given-names: Changbo
+  - family-names: Yu
+    given-names: Zhuolong
+  - family-names: Zhao
+    given-names: Gongming
+  - family-names: Xu
+    given-names: Hongli
+year: 2026
+doi: 10.1145/3808672
+url: "https://arxiv.org/abs/2510.19322"
+repository-code: "https://github.com/ZER0-Nu1L/overlap4ocs"
+license: MIT
+preferred-citation:
+  type: article
+  title: "SWOT: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks"
+  authors:
+    - family-names: Wu
+      given-names: Changbo
+    - family-names: Yu
+      given-names: Zhuolong
+    - family-names: Zhao
+      given-names: Gongming
+    - family-names: Xu
+      given-names: Hongli
+  journal: "Proceedings of the ACM on Networking"
+  volume: "4"
+  issue: "CoNEXT2"
+  year: 2026
+  doi: 10.1145/3808672
+  url: "https://arxiv.org/abs/2510.19322"

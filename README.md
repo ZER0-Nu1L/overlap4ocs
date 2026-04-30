@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-> **Official implementation** of the paper ["Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks"](https://arxiv.org/abs/2510.19322) .
+> **Official implementation** of ["Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks"](https://arxiv.org/abs/2510.19322), accepted at ACM CoNEXT 2026.
 
 [English](README.md) | [中文](README_ZH.md)
 
@@ -413,12 +413,20 @@ load_and_validate_solution(
 
 If you mention SWOT in your research, please cite our paper:
 
+The ACM DOI is listed for the camera-ready PACMNET/CoNEXT record. If DOI resolution is not active yet, use the arXiv URL as the current public paper link.
+
 ```bibtex
-@article{wuEnablingReconfigurationCommunicationOverlap2025,
-  title={Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks},
-  author={Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
-  journal={arXiv preprint arXiv:2510.19322},
-  year={2026}
+@article{wuSWOTEnablingCommunicationReconfiguration2026,
+  title = {{SWOT}: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks},
+  author = {Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
+  journal = {Proceedings of the ACM on Networking},
+  volume = {4},
+  number = {CoNEXT2},
+  articleno = {24},
+  year = {2026},
+  month = jun,
+  doi = {10.1145/3808672},
+  url = {https://arxiv.org/abs/2510.19322}
 }
 ```
 
@@ -435,12 +443,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For questions, issues, or collaboration inquiries:
 - Open an issue on [GitHub Issues](https://github.com/ZER0-Nu1L/overlap4ocs/issues)
 - Contact: [Email](wuchangbo@mail.ustc.edu.cn)
-
-## 🗺️ Roadmap
-
-- [ ] Packet-level simulator integration
-- [ ] Integration with NCCL/MPI libraries
-- [ ] Hardware testbed integration
 
 ---
 

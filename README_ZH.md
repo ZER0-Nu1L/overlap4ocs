@@ -4,7 +4,7 @@
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-> 论文 ["Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks"](https://arxiv.org/abs/2510.19322) 的**官方实现**。
+> ["Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks"](https://arxiv.org/abs/2510.19322) 的**官方实现**，该论文已被 ACM CoNEXT 2026 接收。
 
 [English](README.md) | [中文](README_ZH.md)
 
@@ -411,12 +411,20 @@ load_and_validate_solution(
 
 如果您在研究中提到 SWOT，请引用我们的论文：
 
+ACM DOI 对应 camera-ready 的 PACMNET/CoNEXT 记录。由于 DOI 尚未完成解析，请先使用 arXiv URL 作为当前公开论文链接。
+
 ```bibtex
-@article{wuEnablingReconfigurationCommunicationOverlap2025,
-  title={Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks},
-  author={Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
-  journal={arXiv preprint arXiv:2510.19322},
-  year={2026}
+@article{wuSWOTEnablingCommunicationReconfiguration2026,
+  title = {{SWOT}: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks},
+  author = {Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
+  journal = {Proceedings of the ACM on Networking},
+  volume = {4},
+  number = {CoNEXT2},
+  articleno = {24},
+  year = {2026},
+  month = jun,
+  doi = {10.1145/3808672},
+  url = {https://arxiv.org/abs/2510.19322}
 }
 ```
 
@@ -433,12 +441,6 @@ load_and_validate_solution(
 如有问题、反馈或合作咨询：
 - 在 [GitHub Issues](https://github.com/ZER0-Nu1L/overlap4ocs/issues) 提交问题
 - 联系：[Email](wuchangbo@mail.ustc.edu.cn)
-
-## 🗺️ 开发路线图
-
-- [ ] 包级模拟器集成
-- [ ] 与 NCCL/MPI 库集成
-- [ ] 硬件测试平台集成
 
 ---
 
