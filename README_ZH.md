@@ -1,11 +1,11 @@
-# SWOT：光网络集体通信的重配置-通信重叠调度
+# SWOT：光网络集体通信的通信-重配置重叠调度
 
 [![论文](https://img.shields.io/badge/arXiv-2510.19322-b31b1b.svg)](https://arxiv.org/abs/2510.19322)
 [![DOI](https://zenodo.org/badge/861492578.svg)](https://doi.org/10.5281/zenodo.19924120)
 [![许可证: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-> ["Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks"](https://arxiv.org/abs/2510.19322) 的**官方实现**，该论文已被 ACM CoNEXT 2026 接收。
+> ["Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks"](https://dl.acm.org/doi/10.1145/3808672) 的**官方实现**，该论文已被 ACM CoNEXT 2026 接收。
 
 [English](README.md) | [中文](README_ZH.md)
 
@@ -65,6 +65,8 @@ flowchart TB
 - Node.js/npm（可选，用于开发）
 - Gurobi 许可证（可选，用于商业求解器）
 
+对于 AE 风格的论文复现，Python 3.12 是参考解释器。
+
 ### 安装
 
 我们推荐使用 [uv](https://github.com/astral-sh/uv) 进行依赖管理：
@@ -88,9 +90,13 @@ uv sync --extra gurobi
 
 # 可选：安装 Jupyter notebook 支持
 uv sync --extra notebook
+
+# 论文复现推荐
+uv sync --extra notebook --python 3.12
 ```
 
 > 本仓库统一采用 `uv` 工作流，不再维护并行的 `pip` 安装路径。
+> 完整论文复现流程、预期运行时间、图表映射和求解器差异说明见 [`docs/reproducibility.md`](docs/reproducibility.md)。
 
 ### 运行单个实验
 
@@ -412,20 +418,24 @@ load_and_validate_solution(
 
 如果您在研究中提到 SWOT，请引用我们的论文：
 
-ACM DOI 对应 camera-ready 的 PACMNET/CoNEXT 记录。由于 DOI 尚未完成解析，请先使用 arXiv URL 作为当前公开论文链接。
-
 ```bibtex
-@article{wuSWOTEnablingCommunicationReconfiguration2026,
-  title = {{SWOT}: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks},
-  author = {Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
-  journal = {Proceedings of the ACM on Networking},
-  volume = {4},
-  number = {CoNEXT2},
-  articleno = {24},
-  year = {2026},
-  month = jun,
-  doi = {10.1145/3808672},
-  url = {https://arxiv.org/abs/2510.19322}
+@article{10.1145/3808672,
+author = {Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
+title = {SWOT: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks},
+year = {2026},
+issue_date = {June 2026},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {4},
+number = {CoNEXT2},
+url = {https://doi.org/10.1145/3808672},
+doi = {10.1145/3808672},
+abstract = {Collective communication (CC) is critical for scaling distributed machine learning (DML). The predictable traffic patterns of DML present a great opportunity for applying optical network technologies. Optical networks with reconfigurable topologies promise high bandwidth and low latency for collective communications. However, existing approaches face inherent limitations: static topologies are inefficient for dynamic communication patterns within CC algorithm, while frequent topology reconfiguration matching every step of the algorithm incurs significant overhead. In this paper, we propose SWOT, a demand-aware optical network framework that employs ''intra-collective reconfiguration'' to dynamically align network resources with CC traffic patterns. SWOT hides reconfiguration latency by overlapping it with data transmission through three key techniques: Heterogeneous Message Splitting, Asynchronous Overlapping, and Topology Bypassing. Extensive simulations demonstrate that SWOT reduces communication completion time up to 89.7\% across diverse CC algorithm compared to static baselines, demonstrating strong robustness to varying optical resources and reconfiguration delay.},
+journal = {Proc. ACM Netw.},
+month = jun,
+articleno = {24},
+numpages = {24},
+keywords = {machine learning systems, optical networks, collective communication}
 }
 ```
 

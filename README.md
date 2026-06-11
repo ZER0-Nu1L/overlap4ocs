@@ -1,11 +1,11 @@
-# SWOT: Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks
+# SWOT: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks
 
 [![Paper](https://img.shields.io/badge/arXiv-2510.19322-b31b1b.svg)](https://arxiv.org/abs/2510.19322)
 [![DOI](https://zenodo.org/badge/861492578.svg)](https://doi.org/10.5281/zenodo.19924120)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-> **Official implementation** of ["Enabling Reconfiguration-Communication Overlap for Collective Communication in Optical Networks"](https://arxiv.org/abs/2510.19322), accepted at ACM CoNEXT 2026.
+> **Official implementation** of ["Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks"](https://dl.acm.org/doi/10.1145/3808672), accepted at ACM CoNEXT 2026.
 
 [English](README.md) | [中文](README_ZH.md)
 
@@ -65,6 +65,8 @@ flowchart TB
 - Node.js/npm (optional, for development)
 - Gurobi license (optional, for commercial solver)
 
+For AE-style paper reproduction, Python 3.12 is the reference interpreter.
+
 ### Installation
 
 We recommend using [uv](https://github.com/astral-sh/uv) for dependency management:
@@ -88,9 +90,13 @@ uv sync --extra gurobi
 
 # Optional: Install with Jupyter notebook support
 uv sync --extra notebook
+
+# Recommended for paper reproduction
+uv sync --extra notebook --python 3.12
 ```
 
 > This repository standardizes on `uv`; a parallel `pip` workflow is intentionally not maintained.
+> For the full paper workflow, expected runtime, figure mapping, and solver-variance notes, see [`docs/reproducibility.md`](docs/reproducibility.md).
 
 ### Running a Single Experiment
 
@@ -414,20 +420,24 @@ load_and_validate_solution(
 
 If you mention SWOT in your research, please cite our paper:
 
-The ACM DOI is listed for the camera-ready PACMNET/CoNEXT record. If DOI resolution is not active yet, use the arXiv URL as the current public paper link.
-
 ```bibtex
-@article{wuSWOTEnablingCommunicationReconfiguration2026,
-  title = {{SWOT}: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks},
-  author = {Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
-  journal = {Proceedings of the ACM on Networking},
-  volume = {4},
-  number = {CoNEXT2},
-  articleno = {24},
-  year = {2026},
-  month = jun,
-  doi = {10.1145/3808672},
-  url = {https://arxiv.org/abs/2510.19322}
+@article{10.1145/3808672,
+author = {Wu, Changbo and Yu, Zhuolong and Zhao, Gongming and Xu, Hongli},
+title = {SWOT: Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks},
+year = {2026},
+issue_date = {June 2026},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {4},
+number = {CoNEXT2},
+url = {https://doi.org/10.1145/3808672},
+doi = {10.1145/3808672},
+abstract = {Collective communication (CC) is critical for scaling distributed machine learning (DML). The predictable traffic patterns of DML present a great opportunity for applying optical network technologies. Optical networks with reconfigurable topologies promise high bandwidth and low latency for collective communications. However, existing approaches face inherent limitations: static topologies are inefficient for dynamic communication patterns within CC algorithm, while frequent topology reconfiguration matching every step of the algorithm incurs significant overhead. In this paper, we propose SWOT, a demand-aware optical network framework that employs ''intra-collective reconfiguration'' to dynamically align network resources with CC traffic patterns. SWOT hides reconfiguration latency by overlapping it with data transmission through three key techniques: Heterogeneous Message Splitting, Asynchronous Overlapping, and Topology Bypassing. Extensive simulations demonstrate that SWOT reduces communication completion time up to 89.7\% across diverse CC algorithm compared to static baselines, demonstrating strong robustness to varying optical resources and reconfiguration delay.},
+journal = {Proc. ACM Netw.},
+month = jun,
+articleno = {24},
+numpages = {24},
+keywords = {machine learning systems, optical networks, collective communication}
 }
 ```
 
