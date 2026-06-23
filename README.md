@@ -6,6 +6,17 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 > **Official implementation** of ["Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks"](https://dl.acm.org/doi/10.1145/3808672), accepted at ACM CoNEXT 2026.
+<a href="https://www.acm.org/publications/policies/artifact-review-and-badging-current"><img src="https://www.acm.org/binaries/content/gallery/acm/publications/replication-badges/artifacts_available_dl.jpg" alt="ACM Artifacts Available" height="21" align="absmiddle"></a> <a href="https://www.acm.org/publications/policies/artifact-review-and-badging-current"><img src="https://www.acm.org/binaries/content/gallery/acm/publications/replication-badges/artifacts_evaluated_functional_dl.jpg" alt="ACM Artifacts Evaluated - Functional" height="21" align="absmiddle"></a>
+_(Artifacts Available, Artifacts Evaluated — Functional)_
+
+> [!NOTE]
+> **Reproducibility status.**
+>
+> This artifact received the **Artifact Available** and **Artifact Evaluated - Functional** badges in CoNEXT 2026 AE.
+>
+> To give users a clear picture of actual reproducibility, we also performed a **fully autonomous AI-only reproduction** on a high-performance CPU server (Xeon Gold 6152, 88 vCPUs, 125 GB RAM): an AI coding agent started from an empty directory, used only the public repository and documentation, and ran without any human intervention or manual fixes after launch. The run completed all 11 paper matrices, 298 of 299 individual runs, generated 208 merged CSV rows across 4 prepared CSVs, and regenerated all 12 paper figures in about 6.5 hours. Key peak-gain checks matched the paper exactly or within **0–2.7 percentage points**, with the largest difference consistent with documented time-limited MILP solver/platform variance.
+>
+> See [`docs/reproducibility.md`](docs/reproducibility.md) and [`docs/ai-agent-repro/`](docs/ai-agent-repro/) for commands, reference hardware, solver-budget guidance, and audit evidence.
 
 [English](README.md) | [中文](README_ZH.md)
 

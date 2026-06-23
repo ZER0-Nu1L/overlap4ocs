@@ -6,6 +6,17 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 > ["Enabling Communication-Reconfiguration Overlap for Collective Communication in Optical Networks"](https://dl.acm.org/doi/10.1145/3808672) 的**官方实现**，该论文已被 ACM CoNEXT 2026 接收。
+<a href="https://www.acm.org/publications/policies/artifact-review-and-badging-current"><img src="https://www.acm.org/binaries/content/gallery/acm/publications/replication-badges/artifacts_available_dl.jpg" alt="ACM Artifacts Available" height="21" align="absmiddle"></a> <a href="https://www.acm.org/publications/policies/artifact-review-and-badging-current"><img src="https://www.acm.org/binaries/content/gallery/acm/publications/replication-badges/artifacts_evaluated_functional_dl.jpg" alt="ACM Artifacts Evaluated - Functional" height="21" align="absmiddle"></a>
+_（Artifacts Available, Artifacts Evaluated — Functional）_
+
+> [!NOTE]
+> **可复现状态。**
+>
+> 本 artifact 在 CoNEXT 2026 AE 中获得 **Artifact Available** 和 **Artifact Evaluated - Functional** 两个徽章。
+>
+> 为了向使用者说明实际复现状态，我们在高性能 CPU 服务器（Xeon Gold 6152, 88 vCPUs, 125 GB RAM）上进行了一次**全自动 AI 独立复现**：一个 AI coding agent 从空白目录开始，仅根据公开仓库和文档操作，启动后没有任何人工干预或手动修补。该运行完成了全部 11 个 paper matrices、299 次独立运行中 298 次成功、生成 4 个 prepared CSV 中共 208 行 merged CSV 数据，并在约 6.5 小时内重新生成全部 12 张论文图。关键 peak-gain 检查与论文完全一致或差异在 **0–2.7 个百分点** 内，其中最大差异符合文档中说明的 time-limited MILP solver/platform variance。
+>
+> 复现命令、参考硬件、solver-budget guidance 和 audit evidence 见 [`docs/reproducibility.md`](docs/reproducibility.md) 和 [`docs/ai-agent-repro/`](docs/ai-agent-repro/)。
 
 [English](README.md) | [中文](README_ZH.md)
 

@@ -223,6 +223,10 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Release assets (not committed, uploaded to GitHub releases)
+ai-agent-repro-*.tar.gz
+release-notes.md
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
