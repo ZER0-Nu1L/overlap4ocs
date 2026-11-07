@@ -23,7 +23,7 @@ from orchestrator import (
     select_warm_start,
     write_metrics,
 )
-from paradigm.solver_wrapper import load_and_validate_solution
+from paradigm.solver_wrapper import get_solution_value, load_and_validate_solution
 from utils.scheduler_analysis import plot_schedule
 
 
@@ -344,6 +344,13 @@ def main():
             solver_time_limit,
             debug_mode,
         )
+
+        metrics_payload['solver_evidence'] = getattr(model, 'solver_evidence', None)
+        metrics_payload['raw_cct'] = {
+            'optimized': cct_optimized + params['T_reconf'],
+            'baseline': cct_baseline,
+            'solver_incumbent': get_solution_value(cct) if getattr(model, 'sol_status', 0) in (1, 2) else None,
+        }
 
         # Add debug outputs if available
         if debug_outputs:

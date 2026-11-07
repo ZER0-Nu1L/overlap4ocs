@@ -32,6 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run an experiment matrix and log outcomes"
     )
+    parser.add_argument("--fail-fast", action="store_true", help="Stop after a failed trial")
     parser.add_argument("--matrix", required=True, help="Matrix spec toml path")
     parser.add_argument(
         "--regenerate",
@@ -291,6 +292,8 @@ def run_experiment(
             "m",
             "solver_gap",
             "solver_time_limit",
+            "solver_threads",
+            "solver_seed",
         )
     }
 
@@ -325,6 +328,8 @@ def run_experiment(
         str(metrics_path),
         "--run-id",
         run_id,
+        "--program-config",
+        str(program_config),
     ]
     cmd.extend(extra_main_args)
     heartbeat_sec = max(0, int(opts.heartbeat_sec))
@@ -349,7 +354,7 @@ def run_experiment(
             },
         )
     else:
-        start = time.time()
+        start = time.monotonic()
         print(f"[START {run_index}/{total_runs}] run_id={run_id}")
         with open(log_path, "w") as log_file:
             env = dict(os.environ)
@@ -362,12 +367,13 @@ def run_experiment(
             )
             while True:
                 returncode = proc.poll()
-                now = time.time()
+                now = time.monotonic()
                 if returncode is not None:
                     break
                 if now >= next_heartbeat:
                     elapsed = now - start
-                    last_line = read_last_nonempty_line(log_path)
+                    cbc_log_path = run_dir / 'solver/cbc.log'
+                    last_line = read_last_nonempty_line(cbc_log_path if cbc_log_path.exists() else log_path)
                     msg = (
                         f"[HEARTBEAT {run_index}/{total_runs}] run_id={run_id} "
                         f"elapsed={format_elapsed(elapsed)}"
@@ -393,10 +399,18 @@ def run_experiment(
                     next_heartbeat = now + heartbeat_sec
                 time.sleep(1.0)
             result = proc
-        duration = time.time() - start
+        duration = time.monotonic() - start
         metadata["returncode"] = result.returncode
         metadata["duration_seconds"] = duration
         metadata["status"] = "success" if result.returncode == 0 else "failed"
+        if result.returncode == 0 and metrics_path.exists():
+            trial_metrics = load_metrics(metrics_path)
+            if trial_metrics.get('schema_version') == 1 and 'timing' in trial_metrics:
+                seconds = trial_metrics['timing']['solve_wall_seconds']
+                memory = trial_metrics['resources']['conservative_peak_sum_kib']
+                if (params.get('solver_time_limit') == 120 and seconds > 240) or memory > 32*1024**2:
+                    metadata['status'] = 'investigate_resource_threshold'
+
         if result.returncode == 0 and not opts.skip_artifact_copy:
             metadata["copied_artifacts"] = copy_artifacts(artifacts, run_dir)
         else:
@@ -465,6 +479,8 @@ def main():
         "solver",
         "solver_gap",
         "solver_time_limit",
+        "solver_threads",
+        "solver_seed",
         "k",
         "T_reconf",
         "T_lat",
@@ -499,6 +515,8 @@ def main():
     print(f"Planned runs: {len(pending_entries)} (from {total} pending entries)")
 
     for run_index, entry in enumerate(pending_entries, start=1):
+        if shutil.disk_usage(ROOT).free < 300 * 1024**2:
+            raise RuntimeError('Less than 300 MiB free disk space; refusing a new trial')
         metadata = run_experiment(
             batch_args,
             Path(entry["config"]),
@@ -529,6 +547,8 @@ def main():
             "solver": entry.get("solver"),
             "solver_gap": params.get("solver_gap"),
             "solver_time_limit": params.get("solver_time_limit"),
+            "solver_threads": params.get("solver_threads"),
+            "solver_seed": params.get("solver_seed"),
             "k": params.get("k"),
             "T_reconf": params.get("T_reconf"),
             "T_lat": params.get("T_lat"),
@@ -550,6 +570,9 @@ def main():
         print(
             f"[RUN {executed}/{len(pending_entries)}] {entry['config']} -> status={metadata['status']}"
         )
+
+        if args.fail_fast and metadata["status"] != "success":
+            raise RuntimeError(f"Trial failed: {metadata['run_id']}; inspect preserved evidence")
 
     print(
         f"Matrix sweep complete. Executed {executed} runs. Results appended to {results_csv}"

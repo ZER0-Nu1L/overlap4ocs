@@ -169,6 +169,9 @@ def write_configs(spec: dict, out_dir: Path, overwrite: bool) -> List[dict]:
                     solver_gap=solver_gap,
                     solver_time_limit=solver_time_limit,
                 )
+                for key in ('solver_threads', 'solver_seed'):
+                    if key in spec:
+                        instance[key] = spec[key]
                 fname = config_filename(spec["matrix_id"], algorithm, msg, topo=topo, topo_name=topo_name)
                 cfg_path = out_dir / fname
                 if cfg_path.exists() and not overwrite:

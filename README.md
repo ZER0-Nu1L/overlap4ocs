@@ -469,3 +469,7 @@ For questions, issues, or collaboration inquiries:
 ---
 
 **Note:** This is a research prototype.
+
+## Figure 11 correction
+
+The `fig11-data-correction` branch provides the corrected 84-point dataset and the figure/table generation scripts. See [Figure 11 reproduction](docs/fig11-correction.md).

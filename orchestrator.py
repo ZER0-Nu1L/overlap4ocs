@@ -190,6 +190,8 @@ def build_and_solve_model(
         warm_start_label=warm_start_label,
         solver_gap=solver_gap,
         solver_time_limit=solver_time_limit,
+        solver_threads=params.get("solver_threads"),
+        solver_seed=params.get("solver_seed"),
     )
 
     return (
@@ -251,7 +253,14 @@ def extract_and_validate_solution(
     )
 
     # Validate against warm start
-    cct_optimized = get_solution_value(cct) - params["T_reconf"]
+    incumbent = get_solution_value(cct) if schedule is not None else None
+    if schedule is not None:
+        from utils.fig11_validation import validate_schedule
+        report = validate_schedule(params, schedule, incumbent,
+            {i: get_solution_value(v) for i, v in t_step_end.items()})
+        if not report['valid']:
+            raise ValueError(f"Solver schedule failed independent checks: {report['errors']}")
+    cct_optimized = incumbent - params['T_reconf'] if incumbent is not None else float('inf')
     fallback_used = False
 
     if warm_start_cct is not None and cct_optimized > warm_start_cct + 1e-9:
@@ -428,6 +437,8 @@ def build_metrics_payload(
         "solver_options": {
             "gap": solver_gap,
             "time_limit": solver_time_limit,
+            "threads": params.get("solver_threads"),
+            "seed": params.get("solver_seed"),
         },
         "notes": {"debug_mode": debug_mode},
     }

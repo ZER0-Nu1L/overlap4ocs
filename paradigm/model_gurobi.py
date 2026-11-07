@@ -20,11 +20,10 @@ def compute_bigM(params):
     T_reconf = params['T_reconf']
     num_steps = params.get('num_steps', 1)
 
-    # Conservative upper bound on CCT:
-    # Worst case: all data on one OCS + all reconfigurations
-    max_transmission_time = m / B
-    max_reconfig_time = num_steps * T_reconf
-    theoretical_upper_bound = max_transmission_time + max_reconfig_time
+    # A serial single-plane schedule bounds every model activity. Include all
+    # algorithm steps (Bruck sends m at every step) and all base latencies.
+    total_data = sum(params.get('m_i', {1: m}).values())
+    theoretical_upper_bound = total_data / B + num_steps * (T_reconf + params.get('T_lat', 0))
 
     # Big-M for data volume: use max message size with safety factor
     M_data = max(m, max(params['m_i'].values()) if 'm_i' in params else m) * 1.5
@@ -145,7 +144,7 @@ def add_constraints(model, params, d, t_start, t_end, u, r,
                     model.addConstr(same_config[i, j] == 0,
                                     name=f"same_config_step_{i}_ocs_{j}")
                 # r_{i,j} >= u_{i,j} * (1 - same_config_{i,j})
-                model.addConstr(r[i, j] >= u[i, j] - same_config[i, j],
+                model.addConstr(r[i, j] >= u[i, j] - (u[i - 1, j] if config_diff == 0 else 0),
                                 name=f"r_def_step_{i}_ocs_{j}")
 
     # NOTE: Configuration serves transmission

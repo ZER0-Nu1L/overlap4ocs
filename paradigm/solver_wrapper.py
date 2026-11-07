@@ -36,6 +36,9 @@ def solve_model(
     warm_start_label: str | None = None,
     solver_gap: float | None = None,
     solver_time_limit: float | None = None,
+    solver_threads: int | None = None,
+    solver_seed: int | None = None,
+    solver_artifact_dir: str | None = None,
 ):
     """Solve the model and optionally apply a warm start before optimization."""
     warm_start_applied = False
@@ -46,6 +49,10 @@ def solve_model(
 
     if solver == 'gurobi':
         from gurobipy import GRB
+        if solver_threads is not None:
+            model.setParam('Threads', solver_threads)
+        if solver_seed is not None:
+            model.setParam('Seed', solver_seed)
         if solver_gap is not None:
             model.setParam('MIPGap', float(solver_gap))
         if solver_time_limit and solver_time_limit > 0:
@@ -89,12 +96,23 @@ def solve_model(
     elif solver == 'pulp':
         import pulp
         import multiprocessing
-        num_threads = multiprocessing.cpu_count()
+        num_threads = solver_threads or multiprocessing.cpu_count()
         time_limit = solver_time_limit if (solver_time_limit and solver_time_limit > 0) else None
         solver_kwargs = {
             'msg': True,
             'threads': num_threads,
         }
+        if solver_seed is not None:
+            solver_kwargs['options'] = [f'randomSeed {solver_seed}', f'randomCbcSeed {solver_seed}']
+        if solver_artifact_dir is None:
+            from uuid import uuid4
+            solver_artifact_dir = os.path.join('logs', 'solver-' + uuid4().hex)
+        if solver_artifact_dir:
+            from pathlib import Path
+            artifact_dir = Path(solver_artifact_dir).resolve()
+            artifact_dir.mkdir(parents=True, exist_ok=True)
+            model.name = str(artifact_dir / 'cbc')
+            solver_kwargs.update(logPath=str(artifact_dir / 'cbc.log'), keepFiles=True)
         if solver_gap is not None:
             solver_kwargs['gapRel'] = solver_gap
         if time_limit is not None:
@@ -109,12 +127,22 @@ def solve_model(
         else:
             pulp_solver = pulp.PULP_CBC_CMD(**solver_kwargs)
 
-        model.solve(pulp_solver)        
+        # Preserve the previous CBC no-MIP-start behavior explicitly: setting
+        # PuLP variable initials alone did not submit a CBC MIP start.
+        model.solve(pulp_solver)
+        if solver_artifact_dir:
+            from utils.solver_evidence import parse_cbc_log
+            model.solver_evidence = parse_cbc_log(
+                (artifact_dir / 'cbc.log').read_text(),
+                pulp.value(model.objective), model.sol_status,
+            )
+            model.solver_evidence['warm_start_submitted'] = False
+        warm_start_applied = False
     elif solver == 'pulp_gurobi':
         import pulp
         import multiprocessing
 
-        num_threads = multiprocessing.cpu_count()
+        num_threads = solver_threads or multiprocessing.cpu_count()
         solver_kwargs = {
             'msg': True,
             'warmStart': bool(warm_start_applied),
@@ -172,86 +200,32 @@ def load_solution(params, filename, solver):
     k = params["k"]
     for i in range(1, num_steps + 1):
         for j in range(1, k + 1):
-            d[(i, j)] = sol.get(f"d_{i}_{j}", 0)
-            t_start[(i, j)] = sol.get(f"t_start_{i}_{j}", 0)
-            t_end[(i, j)] = sol.get(f"t_end_{i}_{j}", 0)
-            u[(i, j)] = sol.get(f"u_{i}_{j}", 0)
-            r[(i, j)] = sol.get(f"r_{i}_{j}", 0)
-            t_reconf_start[(i, j)] = sol.get(f"t_reconf_start_{i}_{j}", 0)
-            t_reconf_end[(i, j)] = sol.get(f"t_reconf_end_{i}_{j}", 0)
-        t_step_end[i] = sol.get(f"t_step_end_{i}", 0)
+            d[(i, j)] = sol[f"d_{i}_{j}"]
+            t_start[(i, j)] = sol[f"t_start_{i}_{j}"]
+            t_end[(i, j)] = sol[f"t_end_{i}_{j}"]
+            u[(i, j)] = sol[f"u_{i}_{j}"]
+            r[(i, j)] = sol[f"r_{i}_{j}"]
+            t_reconf_start[(i, j)] = sol[f"t_reconf_start_{i}_{j}"]
+            t_reconf_end[(i, j)] = sol[f"t_reconf_end_{i}_{j}"]
+        t_step_end[i] = sol[f"t_step_end_{i}"]
     return cct, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end
 
 # TODO: test
 def validate_solution(params, d, t_start, t_end, u, r, t_reconf_start, t_reconf_end, t_step_end, cct, debug_model=False):
-    """
-    Validate that the solution satisfies all constraints.
-    Consistent with _validate_solution in model_gurobi.py
-    """
-    k = params['k']
-    num_steps = params['num_steps']
-    m_i = params['m_i']
-    B = params['B']
-    T_reconf = params['T_reconf']
-    configurations = params['configurations']
-    T_lat = params.get('T_lat', 0)
-    epsilon = 1e-6
+    """Check raw saved timings using the independent physical validator."""
+    from utils.fig11_validation import validate_schedule
+    schedule = []
+    for i in range(1, params['num_steps'] + 1):
+        for j in range(1, params['k'] + 1):
+            key = (i, j)
+            schedule.append(dict(step=i, ocs=j, d=d[key], used=u[key], reconf=r[key],
+                t_start=t_start[key], t_end=t_end[key], t_reconf_start=t_reconf_start[key],
+                t_reconf_end=t_reconf_end[key]))
+    report = validate_schedule(params, schedule, cct, t_step_end)
+    if not report['valid']:
+        log.error("Invalid schedule: %s", report['errors'])
+    return report['valid']
 
-    for i in range(1, num_steps + 1):
-        # (1) Message size constraint: sum of data volumes across all OCS should equal m_i[i] for each step i
-        sum_d = sum(d[(i, j)] for j in range(1, k + 1))
-        if abs(sum_d - m_i[i]) > epsilon:
-            log.info(f"Step {i} message size constraint violated: sum(d)= {sum_d}, m_i[{i}]= {m_i[i]}")
-            return False
-
-        for j in range(1, k + 1):
-            # (2) Bandwidth + latency constraint: t_end - t_start == d/B + T_lat * u
-            expected_duration = d[(i, j)] / B + T_lat * u[(i, j)]
-            if abs((t_end[(i, j)] - t_start[(i, j)]) - expected_duration) > epsilon:
-                log.info(f"Step {i}, OCS {j} bandwidth+latency constraint violated: t_end-t_start= {t_end[(i, j)] - t_start[(i, j)]}, expected= {expected_duration}")
-                return False
-
-            # (3) Usage indicator constraint: if d>0, then u should be 1
-            if d[(i, j)] > epsilon and u[(i, j)] < 0.5:
-                log.info(f"Step {i}, OCS {j} usage indicator inconsistent: d= {d[(i, j)]}, u= {u[(i, j)]}")
-                return False
-
-            # (4) Reconfiguration time constraint: t_reconf_end - t_reconf_start == r * T_reconf
-            if abs((t_reconf_end[(i, j)] - t_reconf_start[(i, j)]) - r[(i, j)] * T_reconf) > epsilon:
-                log.info(f"Step {i}, OCS {j} reconfiguration time constraint violated: t_reconf_end-t_reconf_start= {t_reconf_end[(i, j)] - t_reconf_start[(i, j)]}, expected= {r[(i, j)] * T_reconf}")
-                return False
-
-            # (5) Transmission must start after reconfiguration completes
-            if t_start[(i, j)] < t_reconf_end[(i, j)] - epsilon:
-                log.info(f"Step {i}, OCS {j} transmission starts before reconfiguration ends: t_start= {t_start[(i, j)]}, t_reconf_end= {t_reconf_end[(i, j)]}")
-                return False
-
-            # (6) Configuration change indicator: for non-first steps, if config changes and u=1, then r should be 1
-            if i > 1:
-                if configurations[i] != configurations[i - 1] and u[(i, j)] > 0.5 and r[(i, j)] < 0.5:
-                    log.info(f"Step {i}, OCS {j} configuration change indicator violated: u= {u[(i, j)]}, r= {r[(i, j)]}")
-                    return False
-
-        # (8) Step completion time definition: t_step_end[i] should equal max of all OCS (t_end * u)
-        max_val = max(t_end[(i, j)] * u[(i, j)] for j in range(1, k + 1))
-        if abs(t_step_end[i] - max_val) > epsilon:
-            log.info(f"Step {i} completion time definition violated: t_step_end= {t_step_end[i]}, expected= {max_val}")
-            return False
-
-        # (9) Step dependency constraint: for i>1, transmission start time must not be earlier than previous step completion
-        if i > 1:
-            for j in range(1, k + 1):
-                if t_start[(i, j)] < t_step_end[i - 1] - epsilon:
-                    log.info(f"Step {i}, OCS {j} dependency constraint violated: t_start= {t_start[(i, j)]}, previous step completion time= {t_step_end[i - 1]}")
-                    return False
-
-    # (10) CCT definition: CCT should be greater than or equal to max of all step completion times
-    if abs(cct - max(t_step_end[i] for i in range(1, num_steps + 1))) > epsilon:
-        log.info(f"CCT definition violated: cct= {cct}, expected>= {max(t_step_end[i] for i in range(1, num_steps + 1))}")
-        return False
-
-    log.info("All constraints satisfied")
-    return True
 
 def load_and_validate_solution(params, filename, if_debug_model=False, solver='pulp'):
     """

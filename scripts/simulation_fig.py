@@ -5,6 +5,11 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -82,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--exp22-csv",
-        default="logs/matrix_results-exp2.2-matrix_sweep_msg+Tr.csv",
+        default="data/fig11-correction/results.csv",
         help="CSV path for exp2.2 (impact of T_reconf)",
     )
     parser.add_argument(
@@ -816,63 +821,9 @@ def plot_exp21_impact_k(df: pd.DataFrame, out_file: Path) -> None:
 
 
 def plot_exp22_overhead(df: pd.DataFrame, out_file: Path) -> None:
-    data = clamp_optimized_cct(df)
-    data = data[np.isclose(data["B"], 25)].copy()
-    if data.empty:
-        raise ValueError("No exp2.2 data for B=25.")
-
-    data["overhead_pct"] = (
-        (data["baseline_cct"] - data["ideal_cct"]) / data["baseline_cct"]
-    ) * 100
-    unique_tr = sorted(data["T_reconf"].dropna().unique())
-    unique_algs = ["ar_having-doubling", "a2a_pairwise", "a2a_bruck"]
-    msg_sizes = np.sort(data["message_mib"].dropna().unique())
-    x_labels = [
-        format_msg_size_label(float(size), multiline=True) for size in msg_sizes
-    ]
-    alg_colors = {
-        "ar_having-doubling": "#4f669f",
-        "a2a_pairwise": "#c73934",
-        "a2a_bruck": "#ecbc4a",
-    }
-    alg_labels = {
-        "ar_having-doubling": "AllReduce",
-        "a2a_pairwise": "A2A-Pair",
-        "a2a_bruck": "A2A-Bruck",
-    }
-
-    fig, axes = plt.subplots(1, len(unique_tr), figsize=(6 * len(unique_tr), 5))
-    if len(unique_tr) == 1:
-        axes = [axes]
-
-    for idx, tr_val in enumerate(unique_tr):
-        ax = axes[idx]
-        subdf = data[np.isclose(data["T_reconf"], tr_val)]
-        for alg in unique_algs:
-            alg_data = subdf[subdf["algorithm"] == alg].sort_values("message_mib")
-            if alg_data.empty:
-                continue
-            ax.plot(
-                alg_data["message_mib"],
-                alg_data["overhead_pct"],
-                marker="o",
-                linestyle="--",
-                color=alg_colors.get(alg, "gray"),
-                label=alg_labels.get(alg, alg),
-                linewidth=2,
-                markersize=6,
-            )
-        ax.set_xscale("log", base=2)
-        ax.set_xticks(msg_sizes)
-        ax.set_xticklabels(x_labels)
-        ax.set_xlabel("Message Size", fontsize=14)
-        ax.set_ylabel("Reconfiguration Overhead (%)", fontsize=13)
-        ax.grid(True, alpha=0.3)
-        ax.set_title(f"T_reconf = {tr_val:g} ms", fontsize=14, fontweight="bold")
-        ax.legend(loc="best", fontsize=12)
-
-    plt.tight_layout()
-    save_fig(out_file)
+    """Plot SWOT residuals, rather than baseline residuals, in four columns."""
+    from utils.fig11_plot import plot_figure11
+    plot_figure11(df.to_dict('records'), out_file)
 
 
 def main() -> None:

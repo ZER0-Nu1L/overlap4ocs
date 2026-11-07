@@ -16,6 +16,8 @@ def get_parameters(config_file = 'config/instance.toml'):
         'p': 16,                            # Number of compute nodes
         'm': 32 * 1024 * 1024,              # Total message size (bytes)
         'algorithm': 'ar_having-doubling',  # CC Algorithm: 'ar_having-doubling', 'a2a_pairwise', 'a2a_bruck', ... check in cc_algorithm.py
+        'solver_threads': None,
+        'solver_seed': None,
         'solver_gap': None,                 # Relative MIP gap tolerance (None -> solver default)
         'solver_time_limit': None,          # Time limit in seconds (None -> solver default)
     }
@@ -81,6 +83,11 @@ def validate_parameters(params):
         if not isinstance(value, (int, float)) or value <= 0:
             raise ValueError(f"Parameter {param_name} must be a positive number")
     
+    for key, minimum in (('solver_threads', 1), ('solver_seed', 1)):
+        value = params.get(key)
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < minimum):
+            raise ValueError(f"{key} must be an integer >= {minimum}")
+
     solver_gap = params.get('solver_gap')
     if solver_gap is not None and solver_gap < 0:
         raise ValueError("solver_gap must be non-negative when provided")

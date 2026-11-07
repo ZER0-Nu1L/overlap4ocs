@@ -14,10 +14,10 @@ def compute_bigM(params):
     T_reconf = params['T_reconf']
     num_steps = params.get('num_steps', 1)
 
-    # Conservative upper bound on CCT
-    max_transmission_time = m / B
-    max_reconfig_time = num_steps * T_reconf
-    theoretical_upper_bound = max_transmission_time + max_reconfig_time
+    # A serial single-plane schedule bounds every model activity. Include all
+    # algorithm steps (Bruck sends m at every step) and all base latencies.
+    total_data = sum(params.get('m_i', {1: m}).values())
+    theoretical_upper_bound = total_data / B + num_steps * (T_reconf + params.get('T_lat', 0))
 
     # Big-M for data volume
     M_data = max(m, max(params['m_i'].values()) if 'm_i' in params else m) * 1.5
@@ -110,7 +110,7 @@ def build_model(params, debug_model=False):
             else:
                 # Check if configurations are the same
                 same_config = 1 if configurations[i] == configurations[i-1] else 0
-                prob += (r[(i,j)] >= u[(i,j)] - same_config, f"r_def_step_{i}_{j}")
+                prob += (r[(i,j)] >= u[(i,j)] - same_config * u[(i-1,j)], f"r_def_step_{i}_{j}")
             prob += (u[(i,j)] >= r[(i,j)], f"u_after_r_{i}_{j}")
 
     # (7) OCS activity time non-overlapping constraint

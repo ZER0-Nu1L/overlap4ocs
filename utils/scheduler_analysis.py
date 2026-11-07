@@ -54,7 +54,7 @@ def extract_results(source, **kwargs):
         if solver == "gurobi":
             from gurobipy import GRB
 
-            optimal = model.status == GRB.OPTIMAL
+            optimal = model.SolCount > 0
         elif (
             params["solver"] == "pulp"
             or params["solver"] == "copt"
@@ -64,7 +64,7 @@ def extract_results(source, **kwargs):
 
             status_str = pulp.LpStatus[model.status]
             log.info("Pulp solver status: %s", status_str)
-            optimal = status_str == "Optimal"
+            optimal = getattr(model, "sol_status", None) in (pulp.LpSolutionOptimal, pulp.LpSolutionIntegerFeasible)
 
         if optimal:
             schedule = []
@@ -88,7 +88,7 @@ def extract_results(source, **kwargs):
             schedule.sort(key=lambda s: s["t_start"])
             return schedule
         else:
-            log.info("No optimal solution found.")
+            log.info("No feasible integer incumbent found.")
             return None
 
 
